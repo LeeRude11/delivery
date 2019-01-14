@@ -1,6 +1,6 @@
 <ul>
 {% for item in object_list %}
-  <li>{{ item }}</li>
+  <li><a href="{% url 'menu:detail' item.id %}">{{ item.name }} - {{ item.price }}</a></li>
 {% empty %}
   <li>No items in menu :(</li>
 {% endfor %}
