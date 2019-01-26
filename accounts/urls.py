@@ -5,6 +5,7 @@ from .views import CustomPasswordChangeView, ProfileView
 app_name = 'accounts'
 urlpatterns = [
     path('login/', auth_views.LoginView.as_view(), name='login'),
+    path('logout/', auth_views.logout_then_login, name='logout'),
     path('password_change/', CustomPasswordChangeView.as_view(),
          name='password_change'),
     path('profile/', ProfileView.as_view(), name='profile')
