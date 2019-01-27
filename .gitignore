@@ -1,5 +1,4 @@
 db.sqlite3
 specs.txt
 temp_private_vars.py
-menu/migrations
-accounts/migrations
+**/migrations
