@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MaxValueValidator, MinValueValidator
+
+MAX_ORDER_VOLUME = 20
 
 
 class OrderInfo(models.Model):
@@ -13,7 +16,9 @@ class OrderInfo(models.Model):
 class OrderContents(models.Model):
     order = models.ForeignKey(OrderInfo, on_delete=models.CASCADE)
     menu_item = models.ForeignKey('menu.MenuItem', on_delete=models.CASCADE)
-    amount = models.IntegerField(default=1)
+    amount = models.IntegerField(
+        default=1,
+        validators=[MaxValueValidator(MAX_ORDER_VOLUME), MinValueValidator(1)])
 
 
 class OrderLog(models.Model):
