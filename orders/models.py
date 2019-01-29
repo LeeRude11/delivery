@@ -18,6 +18,10 @@ class OrderInfo(models.Model):
             cost += order_item.amount * order_item.menu_item.price
         return cost
 
+    ordered = models.DateTimeField('date order was placed', auto_now=True)
+    cooked = models.DateTimeField('date order was cooked')
+    delivered = models.DateTimeField('date order was delivered')
+
     # TODO: a function to process OrderLog and return current status
     status = None
 
@@ -31,15 +35,3 @@ class OrderContents(models.Model):
     amount = models.IntegerField(
         default=1,
         validators=[MaxValueValidator(MAX_ORDER_VOLUME), MinValueValidator(1)])
-
-
-class OrderLog(models.Model):
-    """
-    A single order state change timings to be gradually filled.
-    """
-    # TODO: plug OrderInfo
-    foreign_order_id = None
-    # TODO: datetime format
-    ordered = None
-    cooked = None
-    delivered = None
