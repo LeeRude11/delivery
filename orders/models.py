@@ -1,29 +1,43 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils import timezone
 
 MAX_ORDER_VOLUME = 20
 
 
 class OrderInfo(models.Model):
     """
-    Top order object bound to user with cost and status functions
-    calculated with belonging OrderContents and OrderLog classes.
+    Order object bound to user with cost function
+    calculated with belonging OrderContents.
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    def cost(self):
+    def get_cost(self):
+        """
+        Calculate cost with bound OrderContents objects.
+        """
         cost = 0
         for order_item in self.ordercontents_set.all():
             cost += order_item.amount * order_item.menu_item.price
         return cost
 
-    ordered = models.DateTimeField('date order was placed', auto_now=True)
-    cooked = models.DateTimeField('date order was cooked')
-    delivered = models.DateTimeField('date order was delivered')
+    # State properties
+    ordered = models.DateTimeField(
+        'date order was placed', auto_now_add=True)
+    cooked = models.DateTimeField(
+        'date order was cooked', null=True, blank=True)
+    delivered = models.DateTimeField(
+        'date order was delivered', null=True, blank=True)
 
-    # TODO: a function to process OrderLog and return current status
-    status = None
+    def update_current_state(self):
+        """
+        When called, timing properties are gradually updated.
+        """
+        if self.cooked is None:
+            self.cooked = timezone.now()
+        else:
+            self.delivered = timezone.now()
 
 
 class OrderContents(models.Model):
