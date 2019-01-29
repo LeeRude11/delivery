@@ -11,8 +11,13 @@ class OrderInfo(models.Model):
     calculated with belonging OrderContents and OrderLog classes.
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    # TODO: a function to process OrderContents and return cost
-    cost = models.IntegerField(default=1)
+
+    def cost(self):
+        cost = 0
+        for order_item in self.ordercontents_set.all():
+            cost += order_item.amount * order_item.menu_item.price
+        return cost
+
     # TODO: a function to process OrderLog and return current status
     status = None
 
