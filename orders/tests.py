@@ -6,6 +6,7 @@ from datetime import datetime
 
 from .models import OrderInfo, OrderContents
 from menu.models import MenuItem
+from .views import ShoppingCartView
 
 
 def create_new_user():
@@ -57,3 +58,11 @@ class OrderInfoTests(TestCase):
         order.update_current_state()
         self.assertIsInstance(order.cooked, datetime)
         self.assertIsInstance(order.delivered, datetime)
+
+
+"""View tests."""
+
+
+def ShoppingCartViewTests(TestCase):
+    ShoppingCartView
+    pass
