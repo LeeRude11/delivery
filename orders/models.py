@@ -6,6 +6,10 @@ MAX_ORDER_VOLUME = 20
 
 
 class OrderInfo(models.Model):
+    """
+    Top order object bound to user with cost and status functions
+    calculated with belonging OrderContents and OrderLog classes.
+    """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     # TODO: a function to process OrderContents and return cost
     cost = models.IntegerField(default=1)
@@ -14,6 +18,9 @@ class OrderInfo(models.Model):
 
 
 class OrderContents(models.Model):
+    """
+    A single MenuItem, its amount and corresponding order.
+    """
     order = models.ForeignKey(OrderInfo, on_delete=models.CASCADE)
     menu_item = models.ForeignKey('menu.MenuItem', on_delete=models.CASCADE)
     amount = models.IntegerField(
@@ -22,6 +29,9 @@ class OrderContents(models.Model):
 
 
 class OrderLog(models.Model):
+    """
+    A single order state change timings to be gradually filled.
+    """
     # TODO: plug OrderInfo
     foreign_order_id = None
     # TODO: datetime format
