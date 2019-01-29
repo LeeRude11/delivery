@@ -2,8 +2,9 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 
 from random import randint
+from datetime import datetime
 
-from .models import OrderInfo, OrderContents, OrderLog
+from .models import OrderInfo, OrderContents
 from menu.models import MenuItem
 
 
@@ -40,4 +41,19 @@ class OrderInfoTests(TestCase):
             menu_item = MenuItem.objects.create(name=f'dish{i}', price=price)
             OrderContents.objects.create(
                 order=order, menu_item=menu_item, amount=amount)
-        self.assertEqual(cost, order.cost())
+        self.assertEqual(cost, order.get_cost())
+
+    def test_order_update_status_function(self):
+        """Status is correctly updated"""
+        order = create_new_user_and_return_his_order()
+        self.assertIsInstance(order.ordered, datetime)
+        self.assertIsNone(order.cooked)
+        self.assertIsNone(order.delivered)
+
+        order.update_current_state()
+        self.assertIsInstance(order.cooked, datetime)
+        self.assertIsNone(order.delivered)
+
+        order.update_current_state()
+        self.assertIsInstance(order.cooked, datetime)
+        self.assertIsInstance(order.delivered, datetime)
