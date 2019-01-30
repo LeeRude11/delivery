@@ -6,7 +6,7 @@ from datetime import datetime
 
 from .models import OrderInfo, OrderContents
 from menu.models import MenuItem
-from .views import ShoppingCartView
+# from .views import ShoppingCartView
 
 
 def create_new_user():
@@ -42,7 +42,8 @@ class OrderInfoTests(TestCase):
             menu_item = MenuItem.objects.create(name=f'dish{i}', price=price)
             OrderContents.objects.create(
                 order=order, menu_item=menu_item, amount=amount)
-        self.assertEqual(cost, order.get_cost())
+        order.update_cost()
+        self.assertEqual(cost, order.cost)
 
     def test_order_update_status_function(self):
         """Status is correctly updated"""
@@ -63,6 +64,6 @@ class OrderInfoTests(TestCase):
 """View tests."""
 
 
-def ShoppingCartViewTests(TestCase):
-    ShoppingCartView
-    pass
+# class ShoppingCartViewTests(TestCase):
+#     ShoppingCartView
+#     pass
