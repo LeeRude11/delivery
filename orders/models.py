@@ -13,14 +13,14 @@ class OrderInfo(models.Model):
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    def get_cost(self):
+    cost = models.IntegerField(default=0)
+
+    def update_cost(self):
         """
         Calculate cost with bound OrderContents objects.
         """
-        cost = 0
         for order_item in self.ordercontents_set.all():
-            cost += order_item.amount * order_item.menu_item.price
-        return cost
+            self.cost += order_item.amount * order_item.menu_item.price
 
     # State properties
     ordered = models.DateTimeField(
