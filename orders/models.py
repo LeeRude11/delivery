@@ -13,14 +13,7 @@ class OrderInfo(models.Model):
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    cost = models.IntegerField(default=0)
-
-    def update_cost(self):
-        """
-        Calculate cost with bound OrderContents objects.
-        """
-        for order_item in self.ordercontents_set.all():
-            self.cost += order_item.amount * order_item.menu_item.price
+    total_cost = models.IntegerField(default=0)
 
     # State properties
     ordered = models.DateTimeField(
@@ -38,6 +31,7 @@ class OrderInfo(models.Model):
             self.cooked = timezone.now()
         else:
             self.delivered = timezone.now()
+        self.save()
 
 
 class OrderContents(models.Model):
@@ -49,3 +43,17 @@ class OrderContents(models.Model):
     amount = models.IntegerField(
         default=1,
         validators=[MaxValueValidator(MAX_ORDER_VOLUME), MinValueValidator(1)])
+    cost = models.IntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        if self.id is not None:
+            self.order.total_cost -= self.cost
+        self.cost = self.amount * self.menu_item.price
+        self.order.total_cost += self.cost
+        self.order.save()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self.order.total_cost -= self.amount * self.menu_item.price
+        self.order.save()
+        super().delete(*args, **kwargs)
