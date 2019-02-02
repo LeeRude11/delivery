@@ -32,7 +32,7 @@ class OrderInfoTests(TestCase):
         self.assertEqual(new_order.user, User.objects.get(id=1))
 
     def test_order_cost_function(self):
-        """Cost is correctly calculated"""
+        """OrderContents.cost is correctly added in total cost"""
         cost = 0
         order = create_new_user_and_return_his_order()
         for i in range(3):
@@ -42,8 +42,7 @@ class OrderInfoTests(TestCase):
             menu_item = MenuItem.objects.create(name=f'dish{i}', price=price)
             OrderContents.objects.create(
                 order=order, menu_item=menu_item, amount=amount)
-        order.update_cost()
-        self.assertEqual(cost, order.cost)
+            self.assertEqual(cost, order.total_cost)
 
     def test_order_update_status_function(self):
         """Status is correctly updated"""

@@ -10,7 +10,7 @@ class OrderContentsInline(admin.TabularInline):
 
 class OrderInfoAdmin(admin.ModelAdmin):
     inlines = [OrderContentsInline]
-    list_display = ('id', 'ordered', 'cooked', 'delivered', 'cost')
+    list_display = ('id', 'ordered', 'cooked', 'delivered', 'total_cost')
 
 
 admin.site.register(OrderInfo, OrderInfoAdmin)
