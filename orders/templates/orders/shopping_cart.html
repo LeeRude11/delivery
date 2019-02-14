@@ -1,1 +1,15 @@
 Hey, I am a shopping cart page.
+<div>
+  Food cost: {{ cart.cost }}
+</div>
+<div>
+  {% if contents %}
+   <ul>
+      {% for item in contents %}
+      <li>{{ item.name }}, {{ item.price }} x {{ item.amount }} = {{ item.cost }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Your shopping cart is empty.</p>
+  {% endif %}
+</div>
