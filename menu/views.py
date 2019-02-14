@@ -18,6 +18,7 @@ class MenuItemView(generic.DetailView):
 
 
 def add_to_cart(request, menuitem_id):
+    # TODO add_to_cart TO modify_cart - update and delete if zero
     menuitem = get_object_or_404(MenuItem, pk=menuitem_id)
     if request.user.is_authenticated is False:
         messages.error(request, "Must be logged in.")

@@ -63,11 +63,10 @@ class MenuItemAddToCartTests(TestCase):
         new_menu_item = create_menu_item()
         url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
         response = self.client.post(url, {'amount': 1}, follow=True)
-        # TODO a simple reverse works for accessing another app's url?
         self.assertRedirects(response, reverse('accounts:login'))
         message = list(response.context.get('messages'))[0]
         self.assertEqual(message.tags, 'error')
-        self.assertTrue("Must be logged in" in message.message)
+        self.assertTrue("Must be logged in." in message.message)
 
     def test_add_item_to_cart(self):
         """
