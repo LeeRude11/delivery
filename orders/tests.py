@@ -1,12 +1,15 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
+from django.urls import reverse
 
 from random import randint
 from datetime import datetime
 
 from .models import OrderInfo, OrderContents
 from menu.models import MenuItem
-# from .views import ShoppingCartView
+
+DEF_NAME = 'New Dish'
+DEF_PRICE = 100
 
 
 def create_new_user():
@@ -14,9 +17,12 @@ def create_new_user():
     return User.objects.create_user('testuser', None, 'testpassword')
 
 
-def create_menu_item():
-    """Create a new MenuItem"""
-    return MenuItem.objects.create(name='new dish', price=100)
+def create_menu_item(name=DEF_NAME, price=DEF_PRICE):
+    """
+    Create and return a menu item with given name and price.
+    """
+    new_menu_item = MenuItem.objects.create(name=name, price=price)
+    return new_menu_item
 
 
 def create_new_user_and_return_his_order():
@@ -63,6 +69,73 @@ class OrderInfoTests(TestCase):
 """View tests."""
 
 
-# class ShoppingCartViewTests(TestCase):
-#     ShoppingCartView
-#     pass
+class ShoppingCartViewTests(TestCase):
+
+    def test_shoping_cart_redirects_anon_to_login(self):
+        """
+        TEMPORARY - unauthorized users can not access shopping cart page.
+        """
+        url = reverse('orders:shopping_cart')
+        response = self.client.get(url, follow=True)
+        self.assertRedirects(response, reverse('accounts:login'))
+        message = list(response.context.get('messages'))[0]
+        self.assertEqual(message.tags, 'error')
+        self.assertTrue("Must be logged in." in message.message)
+
+    def test_shoping_cart_is_empty(self):
+        """
+        Opening page with empty cart displays appropriate text.
+        """
+        User.objects.create_user('testuser', None, 'testpassword')
+        self.client.login(username='testuser', password='testpassword')
+        url = reverse('orders:shopping_cart')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Your shopping cart is empty.")
+        self.assertQuerysetEqual(response.context['contents'], [])
+
+    def test_shoping_cart_not_empty(self):
+        """
+        Page has user's cart contents.
+        """
+        User.objects.create_user('testuser', None, 'testpassword')
+        self.client.login(username='testuser', password='testpassword')
+        url = reverse('orders:shopping_cart')
+
+        new_menu_items_list = [
+            create_menu_item(name=f'Dish{i}') for i in range(3)]
+        expected_contents = []
+        for new_menu_item in new_menu_items_list:
+            add_url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+            amount = randint(1, 10)
+            self.client.post(add_url, {'amount': amount})
+            expected_contents.append({
+                'name': new_menu_item.name,
+                'price': new_menu_item.price,
+                'amount': amount,
+                'cost': new_menu_item.price * amount
+            })
+
+        response = self.client.get(url)
+        self.assertEqual(response.context['contents'], expected_contents)
+
+    def test_shoping_cart_displays_total_cost(self):
+        """
+        Whole cart cost is correctly calculated and displayed.
+        """
+        User.objects.create_user('testuser', None, 'testpassword')
+        self.client.login(username='testuser', password='testpassword')
+        url = reverse('orders:shopping_cart')
+
+        new_menu_items_list = [
+            create_menu_item(
+                name=f'Dish{i}', price=randint(10, 300)) for i in range(3)]
+        expected_cart_cost = 0
+        for new_menu_item in new_menu_items_list:
+            add_url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+            amount = randint(1, 10)
+            expected_cart_cost += amount * new_menu_item.price
+            self.client.post(add_url, {'amount': amount})
+
+        response = self.client.get(url)
+        self.assertEqual(response.context['cart_cost'], expected_cart_cost)
