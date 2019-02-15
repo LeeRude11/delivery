@@ -19,10 +19,14 @@ class MenuItemView(generic.DetailView):
 
 def add_to_cart(request, menuitem_id):
     # TODO add_to_cart TO modify_cart - update and delete if zero
-    menuitem = get_object_or_404(MenuItem, pk=menuitem_id)
     if request.user.is_authenticated is False:
         messages.error(request, "Must be logged in.")
         return HttpResponseRedirect(reverse('accounts:login'))
+
+    menuitem = get_object_or_404(MenuItem, pk=menuitem_id)
+    if request.method != 'POST':
+        return HttpResponseRedirect(
+            reverse('menu:detail', args=(menuitem.id,)))
 
     amount_to_add = request.POST.get('amount', '')
     if amount_to_add.isdigit() is False or int(amount_to_add) == 0:

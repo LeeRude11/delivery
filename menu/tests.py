@@ -68,6 +68,18 @@ class MenuItemAddToCartTests(TestCase):
         self.assertEqual(message.tags, 'error')
         self.assertTrue("Must be logged in." in message.message)
 
+    def test_add_to_cart_post_only(self):
+        """
+        Only accept POST requests.
+        """
+        User.objects.create_user('testuser', None, 'testpassword')
+        self.client.login(username='testuser', password='testpassword')
+        new_menu_item = create_menu_item()
+        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+        response = self.client.get(url, follow=True)
+        self.assertRedirects(response, reverse('menu:detail',
+                             args=(new_menu_item.id,)))
+
     def test_add_item_to_cart(self):
         """
         Adding an item on its View adds it to user's session object.
