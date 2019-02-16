@@ -53,6 +53,32 @@ class MenuListViewTests(TestCase):
                                  ['<MenuItem: ' + new_menu_item.name + '>'])
 
 
+class CustomTestCase(TestCase):
+
+    def login_test_user(self):
+        """
+        Create and login a test user.
+        """
+        User.objects.create_user('testuser', None, 'testpassword')
+        self.client.login(username='testuser', password='testpassword')
+
+
+class MenuItemViewTests(CustomTestCase):
+
+    def test_view_context_current_amount(self):
+        """
+        MenuItemView context has current amount of the item in cart.
+        """
+        self.login_test_user()
+        new_menu_item = create_menu_item()
+        add_url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+        amount = randint(1, 10)
+        self.client.post(add_url, {'amount': amount})
+        url = reverse('menu:detail', args=(new_menu_item.id,))
+        response = self.client.get(url)
+        self.assertEqual(response.context['current_amount'], amount)
+
+
 class MenuItemAddToCartTests(TestCase):
 
     def test_non_user_can_not_order(self):
