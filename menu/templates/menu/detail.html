@@ -1,2 +1,9 @@
 <h1>{{ object.name }}</h1>
 <h2> Costs {{ object.price }}</h2>
+<form action="{% url 'menu:add_to_cart' object.id %}" method="post">
+    {% csrf_token %}
+    {# very placeholder-ish #}
+    <label for="amount">Amount: </label>
+    <input id="amount" type="number" name="amount" value="TODO current amount">
+    <input type="submit" value="Add">
+</form>
