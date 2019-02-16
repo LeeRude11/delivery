@@ -13,3 +13,10 @@ Hey, I am a shopping cart page.
     <p>Your shopping cart is empty.</p>
   {% endif %}
 </div>
+<form action="{% url 'orders:process_order' %}" method="post">
+    {% csrf_token %}
+    {# very placeholder-ish #}
+    <label for="nothing">There's going to be a bunch of forms: </label>
+    <input id="nothing" type="text" name="nothing" value="Someday">
+    <input type="submit" value="Place order">
+</form>
