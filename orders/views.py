@@ -8,6 +8,7 @@ from menu.models import MenuItem
 
 
 def shopping_cart(request):
+    # TODO remove and modify items; grey out 'zeroed' items
     if request.user.is_authenticated is False:
         messages.error(request, "Must be logged in.")
         return HttpResponseRedirect(reverse('accounts:login'))
