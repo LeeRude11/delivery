@@ -4,6 +4,6 @@
     {% csrf_token %}
     {# very placeholder-ish #}
     <label for="amount">Amount: </label>
-    <input id="amount" type="number" name="amount" value="TODO current amount">
+    <input id="amount" type="number" name="amount" value="{{current_amount}}">
     <input type="submit" value="Add">
 </form>
