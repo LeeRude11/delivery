@@ -3,7 +3,8 @@
 <form action="{% url 'menu:add_to_cart' object.id %}" method="post">
     {% csrf_token %}
     {# very placeholder-ish #}
+    {# TODO throw a warning if user didn't update value and submitted #}
     <label for="amount">Amount: </label>
     <input id="amount" type="number" name="amount" value="{{current_amount}}">
-    <input type="submit" value="Add">
+    <input type="submit" value="Confirm">
 </form>
