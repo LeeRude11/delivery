@@ -79,7 +79,7 @@ class MenuItemViewTests(CustomTestCase):
         self.assertEqual(response.context['current_amount'], amount)
 
 
-class MenuItemAddToCartTests(TestCase):
+class MenuItemAddToCartTests(CustomTestCase):
 
     def test_non_user_can_not_order(self):
         """
@@ -123,15 +123,15 @@ class MenuItemAddToCartTests(TestCase):
         }
         self.assertEqual(session['cart'], expected_cart)
 
-    def test_add_only_positive_ints_of_items(self):
+    def test_deny_non_ints_and_negative(self):
         """
-        Trigger an error message if provided item amount was 0, negative,
-        float or string.
+        Trigger an error message if provided item amount was negative,
+        or wasn't an integer.
         """
         User.objects.create_user('testuser', None, 'testpassword')
         self.client.login(username='testuser', password='testpassword')
         new_menu_item = create_menu_item()
-        amounts = [0, -1, 1.5, 'Hello']
+        amounts = [-1, 1.5, 'Hello']
         url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
         for amount in amounts:
             response = self.client.post(url, {'amount': amount}, follow=True)
@@ -142,6 +142,37 @@ class MenuItemAddToCartTests(TestCase):
             self.assertTrue("Incorrect amount." in message.message)
         session = self.client.session
         self.assertRaises(KeyError, lambda: session['cart'])
+
+    def test_remove_some_items(self):
+        """
+        Cart is successfully updated after removing some items.
+        """
+        self.login_test_user()
+        new_menu_item = create_menu_item()
+        amount = randint(6, 10)
+        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+        self.client.post(url, {'amount': amount})
+        new_amount = randint(1, 5)
+        self.client.post(url, {'amount': new_amount})
+        session = self.client.session
+        expected_cart = {
+            f'{new_menu_item.id}': f'{new_amount}'
+        }
+        self.assertEqual(session['cart'], expected_cart)
+
+    def test_remove_all_items(self):
+        """
+        Item key is removed from cart if provided amount is 0.
+        """
+        self.login_test_user()
+        new_menu_item = create_menu_item()
+        amount = randint(1, 10)
+        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+        self.client.post(url, {'amount': amount})
+        self.client.post(url, {'amount': 0})
+        session = self.client.session
+        expected_cart = {}
+        self.assertEqual(session['cart'], expected_cart)
 
     def test_error_when_amount_not_provided(self):
         """
