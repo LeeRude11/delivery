@@ -70,7 +70,7 @@ class CustomTestCase(TestCase):
         self.login_test_user()
         new_menu_item = create_menu_item()
         item_id = new_menu_item.id
-        return (reverse('menu:add_to_cart', args=(item_id,)), item_id)
+        return (reverse('menu:update_cart', args=(item_id,)), item_id)
 
     def post_to_cart_redirect_return_response(self, url, amount=None):
         """
@@ -96,7 +96,7 @@ class MenuItemViewTests(CustomTestCase):
         self.assertEqual(response.context['current_amount'], amount)
 
 
-class MenuItemAddToCartTests(CustomTestCase):
+class MenuItemUpdateCartTests(CustomTestCase):
 
     def test_non_user_can_not_order(self):
         """
@@ -104,7 +104,7 @@ class MenuItemAddToCartTests(CustomTestCase):
         and redirected to login page.
         """
         new_menu_item = create_menu_item()
-        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+        url = reverse('menu:update_cart', args=(new_menu_item.id,))
 
         response = self.client.post(url, {'amount': 1}, follow=True)
         self.assertRedirects(response, reverse('accounts:login'))
@@ -112,7 +112,7 @@ class MenuItemAddToCartTests(CustomTestCase):
         self.assertEqual(message.tags, 'error')
         self.assertTrue("Must be logged in." in message.message)
 
-    def test_add_to_cart_post_only(self):
+    def test_update_cart_post_only(self):
         """
         Only accept POST requests.
         """
@@ -207,7 +207,7 @@ class MenuItemAddToCartTests(CustomTestCase):
             create_menu_item(name=f'Dish{i}') for i in range(3)]
         expected_cart = {}
         for new_menu_item in new_menu_items_list:
-            url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+            url = reverse('menu:update_cart', args=(new_menu_item.id,))
             amount = randint(1, 10)
             self.post_to_cart_redirect_return_response(url, amount)
             expected_cart[f'{new_menu_item.id}'] = f'{amount}'

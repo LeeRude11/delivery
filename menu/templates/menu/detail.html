@@ -1,6 +1,6 @@
 <h1>{{ object.name }}</h1>
 <h2> Costs {{ object.price }}</h2>
-<form action="{% url 'menu:add_to_cart' object.id %}" method="post">
+<form action="{% url 'menu:update_cart' object.id %}" method="post">
     {% csrf_token %}
     {# very placeholder-ish #}
     {# TODO throw a warning if user didn't update value and submitted #}
