@@ -41,13 +41,16 @@ def add_to_cart(request, menuitem_id):
             reverse('menu:detail', args=(menuitem.id,)))
 
     amount_to_add = request.POST.get('amount', '')
-    if amount_to_add.isdigit() is False or int(amount_to_add) == 0:
+    if amount_to_add.isdigit() is False:
         messages.error(request, "Incorrect amount.")
         return HttpResponseRedirect(
             reverse('menu:detail', args=(menuitem.id,)))
 
     cart = request.session.setdefault('cart', {})
-    cart[f'{menuitem_id}'] = amount_to_add
+    if int(amount_to_add) == 0:
+        cart.pop(f'{menuitem_id}', None)
+    else:
+        cart[f'{menuitem_id}'] = amount_to_add
 
     request.session.modified = True
     return HttpResponseRedirect(reverse('menu:menu'))
