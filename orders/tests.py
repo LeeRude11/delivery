@@ -11,6 +11,8 @@ from menu.models import MenuItem
 
 DEF_NAME = 'New Dish'
 DEF_PRICE = 100
+ORDERS_UPDATE = 'orders:orders_update_cart'
+SHOP_CART_PAGE = 'orders/shopping_cart.html'
 
 
 def create_new_user():
@@ -70,7 +72,7 @@ class OrderInfoTests(TestCase):
 """View tests."""
 
 
-class ShoppingCartViewTests(TestCase):
+class CustomTestCase(TestCase):
 
     def assert_redirect_and_error_msg(
             self, path, redirect_to='accounts:login', get=True,
@@ -109,16 +111,20 @@ class ShoppingCartViewTests(TestCase):
         for i in range(3):
             new_menu_item = create_menu_item(
                 name=f'Dish{i}', price=randint(10, 300))
-            add_url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+            add_url = reverse('menu:update_cart', args=(new_menu_item.id,))
             amount = randint(1, 10)
             self.client.post(add_url, {'amount': amount})
             expected_contents.append({
+                'id': new_menu_item.id,
                 'name': new_menu_item.name,
                 'price': new_menu_item.price,
                 'amount': amount,
                 'cost': new_menu_item.price * amount
             })
         return expected_contents
+
+
+class ShoppingCartViewTests(CustomTestCase):
 
     def test_shopping_cart_redirects_anon_to_login(self):
         """
@@ -158,6 +164,65 @@ class ShoppingCartViewTests(TestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.context['cart_cost'], expected_cart_cost)
+
+
+class UpdateCartViewTests(CustomTestCase):
+
+    def test_update_shopping_cart(self):
+        """
+        Change amount of items from shopping cart page.
+        """
+        url = self.user_access_url('orders:shopping_cart')
+
+        expected_contents = self.fill_session_cart()
+        for item in expected_contents:
+            update_url = reverse(ORDERS_UPDATE, args=(item['id'],))
+            new_amount = randint(1, 10)
+            self.client.post(update_url, {'amount': new_amount})
+            item['amount'] = new_amount
+            item['cost'] = new_amount * item['price']
+
+        response = self.client.get(url)
+        self.assertEqual(response.context['contents'], expected_contents)
+
+    def test_remove_item_from_cart(self):
+        """
+        Setting amount to 0 removes item from cart page.
+        """
+        url = self.user_access_url('orders:shopping_cart')
+
+        expected_contents = self.fill_session_cart()
+        index = randint(0, 2)
+        update_url = reverse(
+            ORDERS_UPDATE, args=(expected_contents[index]['id'],))
+        new_amount = 0
+        self.client.post(update_url, {'amount': new_amount})
+
+        expected_contents.pop(index)
+
+        response = self.client.get(url)
+        self.assertEqual(response.context['contents'], expected_contents)
+
+    def test_update_order_menu_errors(self):
+        """
+        Error messages are sent from menu.views.update_cart,
+        and returned page is orders.shopping_page.
+        """
+        self.login_test_user()
+        item = self.fill_session_cart()[0]
+        update_url = reverse(ORDERS_UPDATE, args=(item['id'],))
+        new_amount = -1
+        response = self.client.post(update_url, {'amount': new_amount})
+
+        message = list(response.context.get('messages'))[0]
+        self.assertEqual(message.tags, 'error')
+        self.assertTrue("Incorrect amount." in message.message)
+        self.assertFalse(self.client.session.modified)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, SHOP_CART_PAGE)
+
+
+class ProcessOrderViewTests(CustomTestCase):
 
     def test_process_order_redirects_anon(self):
         """
@@ -206,8 +271,9 @@ class ShoppingCartViewTests(TestCase):
         self.assertEqual(len(expected_contents), len(order_contents))
         for expected in expected_contents:
             # .get also raises exception if more or less than 1 match found
-            db_contents = order_contents.get(menu_item__name=expected['name'])
+            db_contents = order_contents.get(menu_item__id=expected['id'])
             dict_from_db = {
+                'id': db_contents.menu_item.id,
                 'name': db_contents.menu_item.name,
                 'price': db_contents.menu_item.price,
                 'amount': db_contents.amount,
