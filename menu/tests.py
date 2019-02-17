@@ -62,6 +62,25 @@ class CustomTestCase(TestCase):
         User.objects.create_user('testuser', None, 'testpassword')
         self.client.login(username='testuser', password='testpassword')
 
+    def login_user_add_item_return_url_and_id(self):
+        """
+        Login user, create a new menu item and return a tuple(
+        url with its id in args, id itself)
+        """
+        self.login_test_user()
+        new_menu_item = create_menu_item()
+        item_id = new_menu_item.id
+        return (reverse('menu:add_to_cart', args=(item_id,)), item_id)
+
+    def post_to_cart_redirect_return_response(self, url, amount=None):
+        """
+        Make POST request to cart, assertRedirect and return Response.
+        """
+        amount = amount or randint(1, 10)
+        response = self.client.post(url, {'amount': amount}, folow=True)
+        self.assertRedirects(response, reverse('menu:menu'))
+        return response
+
 
 class MenuItemViewTests(CustomTestCase):
 
@@ -69,12 +88,10 @@ class MenuItemViewTests(CustomTestCase):
         """
         MenuItemView context has current amount of the item in cart.
         """
-        self.login_test_user()
-        new_menu_item = create_menu_item()
-        add_url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+        add_url, menu_item_id = self.login_user_add_item_return_url_and_id()
         amount = randint(1, 10)
         self.client.post(add_url, {'amount': amount})
-        url = reverse('menu:detail', args=(new_menu_item.id,))
+        url = reverse('menu:detail', args=(menu_item_id,))
         response = self.client.get(url)
         self.assertEqual(response.context['current_amount'], amount)
 
@@ -88,6 +105,7 @@ class MenuItemAddToCartTests(CustomTestCase):
         """
         new_menu_item = create_menu_item()
         url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+
         response = self.client.post(url, {'amount': 1}, follow=True)
         self.assertRedirects(response, reverse('accounts:login'))
         message = list(response.context.get('messages'))[0]
@@ -98,28 +116,22 @@ class MenuItemAddToCartTests(CustomTestCase):
         """
         Only accept POST requests.
         """
-        User.objects.create_user('testuser', None, 'testpassword')
-        self.client.login(username='testuser', password='testpassword')
-        new_menu_item = create_menu_item()
-        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+        url, menu_item_id = self.login_user_add_item_return_url_and_id()
         response = self.client.get(url, follow=True)
         self.assertRedirects(response, reverse('menu:detail',
-                             args=(new_menu_item.id,)))
+                             args=(menu_item_id,)))
 
     def test_add_item_to_cart(self):
         """
         Adding an item on its View adds it to user's session object.
         """
-        User.objects.create_user('testuser', None, 'testpassword')
-        self.client.login(username='testuser', password='testpassword')
-        new_menu_item = create_menu_item()
-        amount = 1
-        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
-        response = self.client.post(url, {'amount': amount})
-        self.assertRedirects(response, reverse('menu:menu'))
+        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+
+        amount = randint(1, 10)
+        self.post_to_cart_redirect_return_response(url, amount)
         session = self.client.session
         expected_cart = {
-            f'{new_menu_item.id}': f'{amount}'
+            f'{menu_item_id}': f'{amount}'
         }
         self.assertEqual(session['cart'], expected_cart)
 
@@ -128,15 +140,13 @@ class MenuItemAddToCartTests(CustomTestCase):
         Trigger an error message if provided item amount was negative,
         or wasn't an integer.
         """
-        User.objects.create_user('testuser', None, 'testpassword')
-        self.client.login(username='testuser', password='testpassword')
-        new_menu_item = create_menu_item()
+        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+
         amounts = [-1, 1.5, 'Hello']
-        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
         for amount in amounts:
             response = self.client.post(url, {'amount': amount}, follow=True)
             self.assertRedirects(response, reverse('menu:detail',
-                                 args=(new_menu_item.id,)))
+                                 args=(menu_item_id,)))
             message = list(response.context.get('messages'))[0]
             self.assertEqual(message.tags, 'error')
             self.assertTrue("Incorrect amount." in message.message)
@@ -147,16 +157,15 @@ class MenuItemAddToCartTests(CustomTestCase):
         """
         Cart is successfully updated after removing some items.
         """
-        self.login_test_user()
-        new_menu_item = create_menu_item()
+        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+
         amount = randint(6, 10)
-        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
         self.client.post(url, {'amount': amount})
         new_amount = randint(1, 5)
         self.client.post(url, {'amount': new_amount})
         session = self.client.session
         expected_cart = {
-            f'{new_menu_item.id}': f'{new_amount}'
+            f'{menu_item_id}': f'{new_amount}'
         }
         self.assertEqual(session['cart'], expected_cart)
 
@@ -164,10 +173,9 @@ class MenuItemAddToCartTests(CustomTestCase):
         """
         Item key is removed from cart if provided amount is 0.
         """
-        self.login_test_user()
-        new_menu_item = create_menu_item()
+        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+
         amount = randint(1, 10)
-        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
         self.client.post(url, {'amount': amount})
         self.client.post(url, {'amount': 0})
         session = self.client.session
@@ -178,13 +186,11 @@ class MenuItemAddToCartTests(CustomTestCase):
         """
         Trigger an error message if amount of the item wasn't provided.
         """
-        User.objects.create_user('testuser', None, 'testpassword')
-        self.client.login(username='testuser', password='testpassword')
-        new_menu_item = create_menu_item()
-        url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
+        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+
         response = self.client.post(url, follow=True)
         self.assertRedirects(response, reverse('menu:detail',
-                             args=(new_menu_item.id,)))
+                             args=(menu_item_id,)))
         session = self.client.session
         message = list(response.context.get('messages'))[0]
 
@@ -196,16 +202,14 @@ class MenuItemAddToCartTests(CustomTestCase):
         """
         Different items are successfully added to cart.
         """
-        User.objects.create_user('testuser', None, 'testpassword')
-        self.client.login(username='testuser', password='testpassword')
+        self.login_test_user()
         new_menu_items_list = [
             create_menu_item(name=f'Dish{i}') for i in range(3)]
         expected_cart = {}
         for new_menu_item in new_menu_items_list:
             url = reverse('menu:add_to_cart', args=(new_menu_item.id,))
             amount = randint(1, 10)
-            response = self.client.post(url, {'amount': amount})
-            self.assertRedirects(response, reverse('menu:menu'))
+            self.post_to_cart_redirect_return_response(url, amount)
             expected_cart[f'{new_menu_item.id}'] = f'{amount}'
         session = self.client.session
         self.assertEqual(session['cart'], expected_cart)
