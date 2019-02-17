@@ -5,16 +5,21 @@ from django.contrib import messages
 
 from .models import OrderInfo, OrderContents
 from menu.models import MenuItem
+from menu.views import update_cart
 
 
 def shopping_cart(request):
-    # TODO remove and modify items; grey out 'zeroed' items
     if request.user.is_authenticated is False:
         messages.error(request, "Must be logged in.")
         return HttpResponseRedirect(reverse('accounts:login'))
     template_name = 'orders/shopping_cart.html'
     cart_context = build_cart_context(request.session.get('cart', {}))
     return render(request, template_name, cart_context)
+
+
+def orders_update_cart(request, menuitem_id):
+    update_cart(request, menuitem_id)
+    return shopping_cart(request)
 
 
 def process_order(request):
@@ -46,6 +51,7 @@ def build_cart_context(cart_dict):
         current_item = MenuItem.objects.get(pk=item)
         cost = current_item.price * int(amount)
         contents.append({
+            'id': current_item.id,
             'name': current_item.name,
             'price': current_item.price,
             'amount': int(amount),
