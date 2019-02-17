@@ -194,6 +194,9 @@ class ShoppingCartViewTests(TestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your order was placed.")
+        # cart is flushed
+        session = self.client.session
+        self.assertEqual(session['cart'], {})
 
         placed_order = OrderInfo.objects.get(pk=1)
         order_contents = placed_order.ordercontents_set.all()

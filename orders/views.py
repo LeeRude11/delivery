@@ -29,6 +29,10 @@ def process_order(request):
             messages.error(request, "Your cart is empty.")
             return HttpResponseRedirect(reverse('orders:shopping_cart'))
         write_order_to_db(request.user, cart)
+
+        request.session['cart'].clear()
+        request.session.modified = True
+
         return render(request, 'orders/success.html')
 
     else:
