@@ -3,8 +3,8 @@ from django.urls import reverse
 
 from random import randint
 
-from django.contrib.auth.models import User
 from .models import MenuItem
+from orders.tests import CustomTestCase
 
 
 DEF_NAME = 'New Dish'
@@ -53,14 +53,7 @@ class MenuListViewTests(TestCase):
                                  ['<MenuItem: ' + new_menu_item.name + '>'])
 
 
-class CustomTestCase(TestCase):
-
-    def login_test_user(self):
-        """
-        Create and login a test user.
-        """
-        User.objects.create_user('testuser', None, 'testpassword')
-        self.client.login(username='testuser', password='testpassword')
+class MenuCustomTestCase(CustomTestCase):
 
     def login_user_add_item_return_url_and_id(self):
         """
@@ -82,7 +75,7 @@ class CustomTestCase(TestCase):
         return response
 
 
-class MenuItemViewTests(CustomTestCase):
+class MenuItemViewTests(MenuCustomTestCase):
 
     def test_view_context_current_amount(self):
         """
@@ -96,7 +89,7 @@ class MenuItemViewTests(CustomTestCase):
         self.assertEqual(response.context['current_amount'], amount)
 
 
-class MenuItemUpdateCartTests(CustomTestCase):
+class MenuItemUpdateCartTests(MenuCustomTestCase):
 
     def test_non_user_can_not_order(self):
         """
@@ -106,7 +99,7 @@ class MenuItemUpdateCartTests(CustomTestCase):
         new_menu_item = create_menu_item()
         url = reverse('menu:update_cart', args=(new_menu_item.id,))
 
-        response = self.client.post(url, {'amount': 1}, follow=True)
+        response = self.client.post(url, follow=True)
         self.assertRedirects(response, reverse('accounts:login'))
         message = list(response.context.get('messages'))[0]
         self.assertEqual(message.tags, 'error')
@@ -203,13 +196,27 @@ class MenuItemUpdateCartTests(CustomTestCase):
         Different items are successfully added to cart.
         """
         self.login_test_user()
-        new_menu_items_list = [
-            create_menu_item(name=f'Dish{i}') for i in range(3)]
         expected_cart = {}
-        for new_menu_item in new_menu_items_list:
+        for i in range(3):
+            new_menu_item = create_menu_item(name=f'Dish{i}')
             url = reverse('menu:update_cart', args=(new_menu_item.id,))
             amount = randint(1, 10)
-            self.post_to_cart_redirect_return_response(url, amount)
+            self.client.post(url, {'amount': amount})
             expected_cart[f'{new_menu_item.id}'] = f'{amount}'
         session = self.client.session
         self.assertEqual(session['cart'], expected_cart)
+
+    def test_cart_cost_correct(self):
+        """
+        Cart cost is correctly calculated.
+        """
+        self.login_test_user()
+        expected_cost = 0
+        for i in range(3):
+            new_menu_item = create_menu_item(name=f'Dish{i}')
+            url = reverse('menu:update_cart', args=(new_menu_item.id,))
+            amount = randint(1, 10)
+            self.client.post(url, {'amount': amount})
+            expected_cost += amount * new_menu_item.price
+        session = self.client.session
+        self.assertEqual(session['cart_cost'], expected_cost)
