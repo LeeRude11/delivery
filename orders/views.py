@@ -13,8 +13,8 @@ def shopping_cart(request):
         messages.error(request, "Must be logged in.")
         return HttpResponseRedirect(reverse('accounts:login'))
     template_name = 'orders/shopping_cart.html'
-    cart_context = build_cart_context(request.session.get('cart', {}))
-    return render(request, template_name, cart_context)
+    cart_contents = build_cart_contents(request.session.get('cart', {}))
+    return render(request, template_name, cart_contents)
 
 
 def orders_update_cart(request, menuitem_id):
@@ -44,8 +44,7 @@ def process_order(request):
         return HttpResponseRedirect(reverse('orders:shopping_cart'))
 
 
-def build_cart_context(cart_dict):
-    cart_cost = 0
+def build_cart_contents(cart_dict):
     contents = []
     for item, amount in cart_dict.items():
         current_item = MenuItem.objects.get(pk=item)
@@ -57,8 +56,7 @@ def build_cart_context(cart_dict):
             'amount': int(amount),
             'cost': cost
         })
-        cart_cost += cost
-    return {'cart_cost': cart_cost, 'contents': contents}
+    return {'contents': contents}
 
 
 def write_order_to_db(user, cart):
