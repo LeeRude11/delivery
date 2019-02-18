@@ -1,22 +1,27 @@
 Hey, I am a shopping cart page.
 <div>
-  Food cost: {{ cart.cost }}
-</div>
-<div>
   {% if contents %}
    <ul>
       {% for item in contents %}
-      <li>{{ item.name }}, {{ item.price }} x {{ item.amount }} = {{ item.cost }}</li>
+      <li>
+        {{ item.name }}
+        <form action="{% url 'orders:orders_update_cart' item.id %}" method="post">
+          {% csrf_token %}
+          <label for="amount"> {{ item.price }} x </label>
+          <input id="amount" type="number" name="amount" value="{{ item.amount }}">
+          <input type="submit" value="Confirm">
+        </form>
+        = {{ item.cost }}
+      </li>
       {% endfor %}
-    </ul>
+  </ul>
+  <div>
+    Food cost: {{ request.session.cart_cost }}
+  </div>
   {% else %}
     <p>Your shopping cart is empty.</p>
   {% endif %}
 </div>
-<form action="{% url 'orders:process_order' %}" method="post">
-    {% csrf_token %}
-    {# very placeholder-ish #}
-    <label for="nothing">There's going to be a bunch of forms: </label>
-    <input id="nothing" type="text" name="nothing" value="Someday">
-    <input type="submit" value="Place order">
-</form>
+<a href="{% url 'orders:checkout' %}">
+  <button>To Checkout</button>
+</a>
