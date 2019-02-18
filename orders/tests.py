@@ -222,6 +222,31 @@ class UpdateCartViewTests(CustomTestCase):
         self.assertTemplateUsed(response, SHOP_CART_PAGE)
 
 
+class CheckoutViewTests(CustomTestCase):
+
+    def test_can_not_access_checkout_with_empty_cart(self):
+        """
+        Trying to access checkout with an empty cart
+        redirects to shopping cart page.
+        """
+        self.login_test_user()
+
+        self.assert_redirect_and_error_msg(
+            'orders:checkout', redirect_to='orders:shopping_cart',
+            get=False, msg_text="Your cart is empty.")
+
+    def test_can_access_checkout(self):
+        """
+        Users with non-empty cart can access checkout page.
+        """
+        self.login_test_user()
+        self.fill_session_cart()
+        url = reverse('orders:checkout')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'orders/checkout.html')
+
+
 class ProcessOrderViewTests(CustomTestCase):
 
     def test_process_order_redirects_anon(self):

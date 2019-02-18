@@ -22,6 +22,16 @@ def orders_update_cart(request, menuitem_id):
     return shopping_cart(request)
 
 
+def checkout(request):
+    # TODO retrieve user info and fill forms
+    # TODO there also will be a register option for anons
+    cart = request.session.get('cart', {})
+    if len(cart) == 0:
+        messages.error(request, "Your cart is empty.")
+        return HttpResponseRedirect(reverse('orders:shopping_cart'))
+    return render(request, 'orders/checkout.html')
+
+
 def process_order(request):
     # TODO receive more info in POST
     if request.user.is_authenticated is False:
