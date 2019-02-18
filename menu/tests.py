@@ -202,7 +202,7 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         session = self.client.session
         self.assertEqual(session['cart'], expected_cart)
 
-    def test_cart_cost_correct(self):
+    def test_cart_cost_added(self):
         """
         Cart cost is correctly calculated.
         """
@@ -212,3 +212,22 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
             expected_cost += item['price'] * item['amount']
         session = self.client.session
         self.assertEqual(session['cart_cost'], expected_cost)
+
+    def test_cart_cost_removes(self):
+        """
+        Cart cost is correcty updated after deleting item
+        and after decreasing its amount.
+        """
+        self.login_test_user()
+        contents = self.fill_session_cart()
+        old_cost = self.client.session['cart_cost']
+        expected_loss = contents[2]['price'] * contents[2]['amount']
+        expected_loss += contents[1]['price']
+
+        add_url = reverse('menu:update_cart', args=(contents[2]['id'],))
+        self.client.post(add_url, {'amount': 0})
+        add_url = reverse('menu:update_cart', args=(contents[1]['id'],))
+        self.client.post(add_url, {'amount': (contents[1]['amount'] - 1)})
+
+        new_cost = self.client.session['cart_cost']
+        self.assertEqual(old_cost - expected_loss, new_cost)
