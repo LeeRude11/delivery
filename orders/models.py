@@ -54,6 +54,6 @@ class OrderContents(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        self.order.total_cost -= self.amount * self.menu_item.price
+        self.order.total_cost -= self.cost
         self.order.save()
         super().delete(*args, **kwargs)
