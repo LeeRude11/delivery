@@ -46,10 +46,16 @@ def update_cart(request, menuitem_id):
             reverse('menu:detail', args=(menuitem.id,)))
 
     cart = request.session.setdefault('cart', {})
+    key = str(menuitem_id)
+
+    added_cost = (int(amount_to_add) - int(cart.get(key, 0))) * menuitem.price
+    request.session['cart_cost'] = request.session.setdefault(
+        'cart_cost', 0) + added_cost
+
     if int(amount_to_add) == 0:
-        cart.pop(f'{menuitem_id}', None)
+        cart.pop(key, None)
     else:
-        cart[f'{menuitem_id}'] = amount_to_add
+        cart[key] = amount_to_add
 
     request.session.modified = True
     return HttpResponseRedirect(reverse('menu:menu'))
