@@ -162,8 +162,8 @@ class ShoppingCartViewTests(CustomTestCase):
         for item in self.fill_session_cart():
             expected_cart_cost += item['price'] * item['amount']
 
-        response = self.client.get(url)
-        self.assertEqual(response.context['cart_cost'], expected_cart_cost)
+        self.client.get(url)
+        self.assertEqual(self.client.session['cart_cost'], expected_cart_cost)
 
 
 class UpdateCartViewTests(CustomTestCase):
