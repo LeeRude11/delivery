@@ -197,12 +197,8 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         """
         self.login_test_user()
         expected_cart = {}
-        for i in range(3):
-            new_menu_item = create_menu_item(name=f'Dish{i}')
-            url = reverse('menu:update_cart', args=(new_menu_item.id,))
-            amount = randint(1, 10)
-            self.client.post(url, {'amount': amount})
-            expected_cart[f'{new_menu_item.id}'] = f'{amount}'
+        for item in self.fill_session_cart():
+            expected_cart[str(item['id'])] = str(item['amount'])
         session = self.client.session
         self.assertEqual(session['cart'], expected_cart)
 
@@ -212,11 +208,7 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         """
         self.login_test_user()
         expected_cost = 0
-        for i in range(3):
-            new_menu_item = create_menu_item(name=f'Dish{i}')
-            url = reverse('menu:update_cart', args=(new_menu_item.id,))
-            amount = randint(1, 10)
-            self.client.post(url, {'amount': amount})
-            expected_cost += amount * new_menu_item.price
+        for item in self.fill_session_cart():
+            expected_cost += item['price'] * item['amount']
         session = self.client.session
         self.assertEqual(session['cart_cost'], expected_cost)
