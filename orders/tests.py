@@ -212,7 +212,8 @@ class UpdateCartViewTests(CustomTestCase):
         item = self.fill_session_cart()[0]
         update_url = reverse(ORDERS_UPDATE, args=(item['id'],))
         new_amount = -1
-        response = self.client.post(update_url, {'amount': new_amount})
+        response = self.client.post(update_url, {'amount': new_amount},
+                                    follow=True)
 
         message = list(response.context.get('messages'))[0]
         self.assertEqual(message.tags, 'error')
@@ -220,6 +221,26 @@ class UpdateCartViewTests(CustomTestCase):
         self.assertFalse(self.client.session.modified)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, SHOP_CART_PAGE)
+
+
+class RemoveItemViewTests(CustomTestCase):
+
+    def test_remove_item(self):
+        """
+        View removes item from cart.
+        """
+        url = self.user_access_url('orders:shopping_cart')
+
+        expected_contents = self.fill_session_cart()
+        index = randint(0, 2)
+        update_url = reverse(
+            'orders:remove_item', args=(expected_contents[index]['id'],))
+        self.client.post(update_url)
+
+        expected_contents.pop(index)
+
+        response = self.client.get(url)
+        self.assertEqual(response.context['contents'], expected_contents)
 
 
 class CheckoutViewTests(CustomTestCase):

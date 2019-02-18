@@ -7,11 +7,15 @@ Hey, I am a shopping cart page.
         {{ item.name }}
         <form action="{% url 'orders:orders_update_cart' item.id %}" method="post">
           {% csrf_token %}
-          <label for="amount"> {{ item.price }} x </label>
+          <label for="amount">Amount:</label>
           <input id="amount" type="number" name="amount" value="{{ item.amount }}">
           <input type="submit" value="Confirm">
         </form>
-        = {{ item.cost }}
+        x {{ item.price }} = {{ item.cost }}
+        <form action="{% url 'orders:remove_item' item.id %}" method="post">
+          {% csrf_token %}
+          <input type="submit" value="Remove">
+        </form>
       </li>
       {% endfor %}
   </ul>

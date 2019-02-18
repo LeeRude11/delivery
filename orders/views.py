@@ -19,7 +19,14 @@ def shopping_cart(request):
 
 def orders_update_cart(request, menuitem_id):
     update_cart(request, menuitem_id)
-    return shopping_cart(request)
+    return HttpResponseRedirect(reverse('orders:shopping_cart'))
+
+
+def remove_item(request, menuitem_id):
+    request.POST = request.POST.copy()
+    request.POST['amount'] = '0'
+    update_cart(request, menuitem_id)
+    return HttpResponseRedirect(reverse('orders:shopping_cart'))
 
 
 def checkout(request):
