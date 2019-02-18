@@ -46,6 +46,7 @@ def process_order(request):
         write_order_to_db(request.user, cart)
 
         request.session['cart'].clear()
+        request.session['cart_cost'] = 0
         request.session.modified = True
 
         return render(request, 'orders/success.html')

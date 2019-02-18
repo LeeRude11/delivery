@@ -284,9 +284,10 @@ class ProcessOrderViewTests(CustomTestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your order was placed.")
-        # cart is flushed
+        # cart and cart_cost are flushed
         session = self.client.session
         self.assertEqual(session['cart'], {})
+        self.assertEqual(session['cart_cost'], 0)
 
         placed_order = OrderInfo.objects.get(pk=1)
         order_contents = placed_order.ordercontents_set.all()
