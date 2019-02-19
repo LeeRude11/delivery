@@ -2,3 +2,4 @@ db.sqlite3
 specs.txt
 temp_private_vars.py
 **/migrations
+geckodriver.log
