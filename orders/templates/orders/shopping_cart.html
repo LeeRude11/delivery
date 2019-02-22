@@ -19,7 +19,7 @@ Hey, I am a shopping cart page.
       </li>
       {% endfor %}
   </ul>
-  <div>
+  <div id="food_cost">
     Food cost: {{ request.session.cart_cost }}
   </div>
   {% else %}
@@ -27,5 +27,5 @@ Hey, I am a shopping cart page.
   {% endif %}
 </div>
 <a href="{% url 'orders:checkout' %}">
-  <button>To Checkout</button>
+  <button>Checkout</button>
 </a>
