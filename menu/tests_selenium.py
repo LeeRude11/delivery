@@ -16,7 +16,7 @@ class FirefoxTests(StaticLiveServerTestCase):
     def tearDown(self):
         self.browser.close()
 
-    def login_test_user(self):
+    def login_browser_user(self):
         """
         Create and login a test user.
         """
@@ -90,7 +90,7 @@ class MenuDetailTests(FirefoxTests):
         """
         Detail page form contains current amount of the item in cart.
         """
-        self.login_test_user()
+        self.login_browser_user()
 
         new_menu_item = MenuItem.objects.create(
             name=f'Dish{randint(1, 10)}', price=randint(10, 300))
@@ -113,7 +113,7 @@ class MenuDetailTests(FirefoxTests):
         """
         Providing value in amount form updates current amount.
         """
-        self.login_test_user()
+        self.login_browser_user()
 
         new_menu_item = MenuItem.objects.create(
             name=f'Dish{randint(1, 10)}', price=randint(10, 300))
