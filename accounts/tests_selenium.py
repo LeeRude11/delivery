@@ -1,4 +1,4 @@
-from menu.tests_selenuim import FirefoxTests
+from menu.tests_selenium import FirefoxTests
 
 
 class RegisterTests(FirefoxTests):
