@@ -1,0 +1,18 @@
+<head>
+  <title>
+    {% block title %}
+    Welcome!
+    {% endblock %}
+  </title>
+</head>
+<body>
+  <h1>Welcome to Food Delivery(c) website.</h1>
+  <navbar>
+    <a href="{% url 'menu:menu' %}">Menu</a>
+    <a href="{% url 'orders:shopping_cart' %}">Shopping Cart</a>
+    <span>: {{ request.session.cart_cost|default:"0"}}</span>
+  </navbar>
+  {% block content %}
+  {% endblock %}
+  <h2>And we're back to base template.</h2>
+</body>
