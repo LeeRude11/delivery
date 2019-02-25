@@ -1,5 +1,10 @@
-<h1>{{ object.name }}</h1>
-<h2> Costs {{ object.price }}</h2>
+{% extends "base.html" %}
+{% block title %}
+  {{ object.name }}
+{% endblock %}
+{% block content %}
+<div id="item_name">{{ object.name }}</div>
+<div id="item_price"> Costs {{ object.price }}</div>
 <form action="{% url 'menu:update_cart' object.id %}" method="post">
     {% csrf_token %}
     {# very placeholder-ish #}
@@ -8,3 +13,4 @@
     <input id="amount" type="number" name="amount" value="{{current_amount}}">
     <input type="submit" value="Confirm">
 </form>
+{% endblock %}

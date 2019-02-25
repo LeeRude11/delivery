@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+{% block title %}
+  Registration
+{% endblock %}
+{% block content %}
 Register here!
 {% if form.errors %}
 <p>Some error occurred.</p>
@@ -22,3 +27,4 @@ Register here!
   <input type="submit" value="Register">
   <input type="hidden" name="next" value="{{ next }}">
 </form>
+{% endblock %}

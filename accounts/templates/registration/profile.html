@@ -1,1 +1,9 @@
-Hey. It's a profile page for {{ username }}
+{% extends "base.html" %}
+{% block title %}
+  Your profile
+{% endblock %}
+{% block content %}
+<div>
+  Hey. It's a profile page for {{ username }}.
+</div>
+{% endblock %}

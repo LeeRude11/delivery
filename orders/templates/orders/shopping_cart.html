@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+{% block title %}
+  Shopping cart
+{% endblock %}
+{% block content %}
 Hey, I am a shopping cart page.
 <div>
   {% if contents %}
@@ -29,3 +34,4 @@ Hey, I am a shopping cart page.
 <a href="{% url 'orders:checkout' %}">
   <button>Checkout</button>
 </a>
+{% endblock %}
