@@ -80,8 +80,8 @@ class MenuDetailTests(FirefoxTests):
             'menu:detail', args=(test_item.id,))
         self.browser.get(url)
 
-        name_header = self.browser.find_element_by_tag_name('h1')
-        price_header = self.browser.find_element_by_tag_name('h2')
+        name_header = self.browser.find_element_by_id('item_name')
+        price_header = self.browser.find_element_by_id('item_price')
 
         self.assertEqual(name_header.text, test_item.name)
         self.assertIn(str(test_item.price), price_header.text)
