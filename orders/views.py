@@ -18,6 +18,7 @@ def shopping_cart(request):
 
 
 def orders_update_cart(request, menuitem_id):
+    # TODO reusable app, separated units?
     update_cart(request, menuitem_id)
     return HttpResponseRedirect(reverse('orders:shopping_cart'))
 

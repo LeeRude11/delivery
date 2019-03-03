@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.urls import reverse
 
 
 class RegisterViewTests(TestCase):
@@ -8,6 +9,9 @@ class RegisterViewTests(TestCase):
         Can not register with empty values in required fields.
         """
         # Phone, First name, Last name, Address are required.
+        url = reverse('accounts:register')
+        url
+        """How do I post to register?"""
 
     def test_register_success(self):
         """

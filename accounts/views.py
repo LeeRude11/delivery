@@ -8,6 +8,7 @@ class ProfileView(base.TemplateView):
 
     # TODO login_required
     def get_context_data(self, **kwargs):
+        # TODO a lot more information
         context = super().get_context_data(**kwargs)
         user = self.request.user
         context['username'] = user.username
