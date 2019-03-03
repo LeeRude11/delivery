@@ -17,8 +17,8 @@
   <navbar>
     <a href="{% url 'menu:menu' %}">Menu</a>
     <a href="{% url 'orders:shopping_cart' %}">Shopping Cart</a>
-    <a href="{% url 'accounts:profile' %}">Profile</a>
     <span>: {{ request.session.cart_cost|default:"0"}}</span>
+    <a href="{% url 'accounts:profile' %}">Profile</a>
   </navbar>
   {% block content %}
   {% endblock %}
