@@ -109,6 +109,12 @@ class User(AbstractBaseUser):
     def __str__(self):
         return self.phone_number
 
+    def get_full_name(self):
+        return f'{self.first_name} {self.second_name}'
+
+    def get_short_name(self):
+        return f'{self.first_name} {self.second_name[0]}.'
+
     # TODO permissions
     def has_perm(self, perm, obj=None):
         "Does the user have a specific permission?"
