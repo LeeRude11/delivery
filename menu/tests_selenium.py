@@ -1,11 +1,12 @@
 from selenium import webdriver
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.urls import reverse
-from django.contrib.auth.models import User
 
 from random import randint
 
 from menu.models import MenuItem
+# TODO common operations? reusable apps?
+from orders.tests import create_new_user
 
 
 class FirefoxTests(StaticLiveServerTestCase):
@@ -21,8 +22,8 @@ class FirefoxTests(StaticLiveServerTestCase):
         Create and login a test user.
         """
         # https://stackoverflow.com/a/22497239
-        User.objects.create_user('testuser', None, 'testpassword')
-        self.client.login(username='testuser', password='testpassword')
+        user = create_new_user()
+        self.client.login(username=user.phone_number, password='testpassword')
         cookie = self.client.cookies['sessionid']
         self.browser.get(self.live_server_url + '/admin/')
         self.browser.add_cookie({

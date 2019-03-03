@@ -69,6 +69,7 @@ class MenuCustomTestCase(CustomTestCase):
         """
         Make POST request to cart, assertRedirect and return Response.
         """
+        # TODO only one test calls this?
         amount = amount or randint(1, 10)
         response = self.client.post(url, {'amount': amount}, folow=True)
         self.assertRedirects(response, reverse('menu:menu'))

@@ -1,7 +1,7 @@
 from django.test import TestCase
-from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 from random import randint
 from datetime import datetime, timedelta
@@ -13,11 +13,23 @@ DEF_NAME = 'New Dish'
 DEF_PRICE = 100
 ORDERS_UPDATE = 'orders:orders_update_cart'
 SHOP_CART_PAGE = 'orders/shopping_cart.html'
+EMAIL = 'test@example.com'
 
 
 def create_new_user():
     """Create a new user for tests"""
-    return User.objects.create_user('testuser', None, 'testpassword')
+    User = get_user_model()
+    return User.objects.create_user(
+        phone_number='12345',
+        password='testpassword',
+        first_name='test first name',
+        second_name='test second name',
+        email=EMAIL,
+        date_of_birth=datetime.now(),
+        street='test street',
+        house='test house',
+        apartment='test apartment'
+    )
 
 
 def create_menu_item(name=DEF_NAME, price=DEF_PRICE):
@@ -38,7 +50,7 @@ class OrderInfoTests(TestCase):
         """Order is associated with user"""
         new_user = create_new_user()
         new_order = OrderInfo.objects.create(user=new_user)
-        self.assertEqual(new_order.user, User.objects.get(id=1))
+        self.assertEqual(new_order.user, new_user)
 
     def test_order_cost_function(self):
         """OrderContents.cost is correctly added in total cost"""
@@ -96,8 +108,8 @@ class CustomTestCase(TestCase):
         """
         Create and login a test user.
         """
-        User.objects.create_user('testuser', None, 'testpassword')
-        self.client.login(username='testuser', password='testpassword')
+        user = create_new_user()
+        self.client.login(username=user.phone_number, password='testpassword')
 
     def user_access_url(self, path):
         """
