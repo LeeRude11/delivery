@@ -11,7 +11,7 @@ class ProfileView(base.TemplateView):
         # TODO a lot more information
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        context['username'] = user.username
+        context['username'] = user.get_short_name()
         return context
 
 
