@@ -2,6 +2,8 @@ from django.views.generic import base, edit
 from django.contrib import auth
 from django.urls import reverse_lazy
 
+from .forms import UserCreationForm
+
 
 class ProfileView(base.TemplateView):
     template_name = 'registration/profile.html'
@@ -21,6 +23,6 @@ class CustomPasswordChangeView(auth.views.PasswordChangeView):
 
 class RegisterView(edit.CreateView):
     template_name = 'registration/register.html'
-    form_class = auth.forms.UserCreationForm
+    form_class = UserCreationForm
     # TODO login automatically
     success_url = reverse_lazy('accounts:login')
