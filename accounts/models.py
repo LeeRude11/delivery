@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
+import re
 
 
 class CustomUserManager(BaseUserManager):
@@ -14,12 +15,12 @@ class CustomUserManager(BaseUserManager):
         full address and optional email and date of birth.
         """
         if not phone_number:
+            # TODO calling create_user allows to bypass all required fields,
+            # if not checked this way
             raise ValueError('Users must have a phone number')
 
-        # TODO standardize phone number
-        # TODO should all required fields raise an error when missing?
         user = self.model(
-            phone_number=phone_number,
+            phone_number=re.sub('\D', '', phone_number),
             first_name=first_name,
             second_name=second_name,
             email=self.normalize_email(email),
@@ -50,7 +51,7 @@ class CustomUserManager(BaseUserManager):
             password=password,
             first_name=first_name,
             second_name=second_name,
-            email=self.normalize_email(email),
+            email=email,
             date_of_birth=date_of_birth,
             street=street,
             house=house,
