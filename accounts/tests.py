@@ -9,8 +9,21 @@ USER_MODEL = get_user_model()
 
 class UserModelTests(TestCase):
 
-    # TODO
-    pass
+    def test_user_created(self):
+        """
+        User is created using create_user()
+        """
+        new_user = USER_MODEL.objects.create_user(*("1" for i in range(6)))
+        self.assertEqual(new_user, USER_MODEL.objects.get())
+
+    def test_superuser_created(self):
+        """
+        Superuser is created using create_superuser()
+        """
+        new_superuser = USER_MODEL.objects.create_superuser(
+            *("1" for i in range(6)))
+        self.assertEqual(new_superuser, USER_MODEL.objects.get())
+        self.assertTrue(USER_MODEL.objects.get().is_admin)
 
 
 class RegisterViewTests(TestCase):
@@ -74,7 +87,7 @@ class RegisterViewTests(TestCase):
         """
         url = reverse('accounts:register')
         self.client.post(url, self.user_for_tests, follow=True)
-        user = USER_MODEL.objects.get(pk=1).__dict__
+        user = USER_MODEL.objects.get().__dict__
         for field in self.unrequired_fields:
             self.assertEqual(user[field], self.user_for_tests[field])
 
