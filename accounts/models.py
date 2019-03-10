@@ -4,6 +4,35 @@ import re
 
 
 class CustomUserManager(BaseUserManager):
+
+    def _create_user(
+            self, phone_number, password,
+            first_name, second_name,
+            street, house, apartment='',
+            email=None, date_of_birth=None, is_admin=False
+            ):
+
+        if not phone_number:
+            # TODO calling create_user allows to bypass all required fields,
+            # if not checked this way
+            raise ValueError('Users must have a phone number')
+
+        user = self.model(
+            phone_number=re.sub('\D', '', phone_number),
+            first_name=first_name,
+            second_name=second_name,
+            street=street,
+            house=house,
+            apartment=apartment,
+            email=self.normalize_email(email),
+            date_of_birth=date_of_birth,
+            is_admin=is_admin
+        )
+
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
     def create_user(
             self, phone_number, password,
             first_name, second_name,
@@ -14,25 +43,11 @@ class CustomUserManager(BaseUserManager):
         Creates and saves a User with the given phone number, password,
         full address and optional email and date of birth.
         """
-        if not phone_number:
-            # TODO calling create_user allows to bypass all required fields,
-            # if not checked this way
-            raise ValueError('Users must have a phone number')
 
-        user = self.model(
-            phone_number=re.sub('\D', '', phone_number),
-            first_name=first_name,
-            second_name=second_name,
-            email=self.normalize_email(email),
-            date_of_birth=date_of_birth,
-            street=street,
-            house=house,
-            apartment=apartment
+        return self._create_user(
+            phone_number, password, first_name, second_name, street,
+            house, apartment, email, date_of_birth
         )
-
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
 
     def create_superuser(
             self, phone_number, password,
@@ -45,21 +60,10 @@ class CustomUserManager(BaseUserManager):
         full address and optional email and date of birth.
         """
         # TODO superuser-s might need an email
-        # TODO create a superuser without create_user fields(address)?
-        user = self.create_user(
-            phone_number=phone_number,
-            password=password,
-            first_name=first_name,
-            second_name=second_name,
-            email=email,
-            date_of_birth=date_of_birth,
-            street=street,
-            house=house,
-            apartment=apartment
+        return self._create_user(
+            phone_number, password, first_name, second_name, street,
+            house, apartment, email, date_of_birth, True
         )
-        user.is_admin = True
-        user.save(using=self._db)
-        return user
 
 
 class User(AbstractBaseUser):
