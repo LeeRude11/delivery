@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 
+import re
 from .models import User
 
 
@@ -33,6 +34,18 @@ class UserCreationForm(forms.ModelForm):
         if password1 and password2 and password1 != password2:
             raise forms.ValidationError("Passwords don't match")
         return password2
+
+    def clean_email(self):
+        # store email in lowercase
+        email = self.cleaned_data.get("email")
+        if email:
+            email = email.lower()
+        return email
+
+    def clean_phone_number(self):
+        # store only digits of phone numbers
+        phone_number = self.cleaned_data.get("phone_number")
+        return re.sub('\D', '', phone_number)
 
     def save(self, commit=True):
         # Save the provided password in hashed format
