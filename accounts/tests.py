@@ -7,6 +7,12 @@ EMAIL = 'test@example.com'
 USER_MODEL = get_user_model()
 
 
+class UserModelTests(TestCase):
+
+    # TODO
+    pass
+
+
 class RegisterViewTests(TestCase):
 
     required_fields = [
@@ -67,9 +73,7 @@ class RegisterViewTests(TestCase):
         Not required fields are stored if provided.
         """
         url = reverse('accounts:register')
-        response = self.client.post(url, self.user_for_tests, follow=True)
-        print(response.context['form'].errors)
-        # print(USER_MODEL.objects.all())
+        self.client.post(url, self.user_for_tests, follow=True)
         user = USER_MODEL.objects.get(pk=1).__dict__
         for field in self.unrequired_fields:
             self.assertEqual(user[field], self.user_for_tests[field])
@@ -78,7 +82,51 @@ class RegisterViewTests(TestCase):
         """
         Provided phone number is standardized before saving.
         """
-        # TODO
+        user = self.user_for_tests.copy()
+        url = reverse('accounts:register')
+        phone_format_variations = ['+12345', '1(23)45', '123-45']
+        for variation in phone_format_variations:
+            user['phone_number'] = variation
+            self.client.post(url, user, follow=True)
+            added_user = USER_MODEL.objects.get()
+            self.assertEqual(added_user.phone_number, '12345')
+            added_user.delete()
+
+    def test_phone_no_digits(self):
+        """
+        Phone number with no digits returns error.
+        """
+        user = self.user_for_tests.copy()
+        url = reverse('accounts:register')
+        user['phone_number'] = '+abc!'
+        response = self.client.post(url, user, follow=True)
+        self.assertTrue('phone_number' in response.context['form'].errors)
+        self.assertEqual(len(USER_MODEL.objects.all()), 0)
+
+    def test_phone_email_unique(self):
+        """
+        Can't register users with same phone number or email.
+        """
+        first_user = self.user_for_tests.copy()
+        url = reverse('accounts:register')
+        self.client.post(url, first_user, follow=True)
+
+        second_user = self.user_for_tests.copy()
+        response = self.client.post(url, second_user, follow=True)
+        self.assertTrue('phone_number' in response.context['form'].errors)
+        self.assertTrue('email' in response.context['form'].errors)
+
+        second_user['email'] = f"another{EMAIL}"
+        response = self.client.post(url, second_user, follow=True)
+        self.assertTrue('phone_number' in response.context['form'].errors)
+        self.assertFalse('email' in response.context['form'].errors)
+
+        second_user['phone_number'] = f'0{first_user["phone_number"]}'
+        response = self.client.post(url, second_user, follow=True)
+        self.assertFalse('phone_number' in response.context['form'].errors)
+        self.assertFalse('email' in response.context['form'].errors)
+
+        self.assertEqual(len(USER_MODEL.objects.all()), 2)
 
 
 class LoginViewTests(TestCase):
@@ -107,6 +155,13 @@ class LoginViewTests(TestCase):
         """
         If user provided an email on registration,
         check his input against it and log in on success.
+        """
+        # TODO
+
+    def test_email_case_indifferent(self):
+        """
+        Email is stored in lowercase and email provided to login
+        converted to lowercase before verifying.
         """
         # TODO
 
