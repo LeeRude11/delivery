@@ -26,7 +26,7 @@ class UserModelTests(TestCase):
         self.assertTrue(USER_MODEL.objects.get().is_admin)
 
 
-class RegisterViewTests(TestCase):
+class AccountsTestCase(TestCase):
 
     required_fields = [
         'phone_number',
@@ -54,12 +54,22 @@ class RegisterViewTests(TestCase):
         'house': 'test house',
         'apartment': 'test apartment'
     }
+    login_form = {
+        'phone_number': '12345',
+        'password': 'testpassword'
+    }
+    phone_format_variations = ['+12345', '1(23)45', '123-45']
 
     def register_user(self):
         """
         POST a register form.
         """
-        # TODO
+        user = self.user_for_tests.copy()
+        url = reverse('accounts:register')
+        self.client.post(url, user, follow=True)
+
+
+class RegisterViewTests(AccountsTestCase):
 
     def test_register_empty(self):
         """
@@ -83,13 +93,28 @@ class RegisterViewTests(TestCase):
 
     def test_register_unrequired(self):
         """
-        Not required fields are stored if provided.
+        Unrequired fields are...unrequired.
+        """
+        url = reverse('accounts:register')
+        user = self.user_for_tests.copy()
+        for field in self.unrequired_fields:
+            user.pop(field)
+        self.client.post(url, user, follow=True)
+        new_user = USER_MODEL.objects.get()
+        for field in self.unrequired_fields:
+            field_value = getattr(new_user, field)
+            self.assertTrue(field_value in (None, ''))
+
+    def test_register_unrequired_stored(self):
+        """
+        Unrequired fields are stored if provided.
         """
         url = reverse('accounts:register')
         self.client.post(url, self.user_for_tests, follow=True)
-        user = USER_MODEL.objects.get().__dict__
+        user = USER_MODEL.objects.get()
         for field in self.unrequired_fields:
-            self.assertEqual(user[field], self.user_for_tests[field])
+            field_value = getattr(user, field)
+            self.assertEqual(field_value, self.user_for_tests[field])
 
     def test_register_standard_phone(self):
         """
@@ -97,8 +122,7 @@ class RegisterViewTests(TestCase):
         """
         user = self.user_for_tests.copy()
         url = reverse('accounts:register')
-        phone_format_variations = ['+12345', '1(23)45', '123-45']
-        for variation in phone_format_variations:
+        for variation in self.phone_format_variations:
             user['phone_number'] = variation
             self.client.post(url, user, follow=True)
             added_user = USER_MODEL.objects.get()
@@ -141,22 +165,59 @@ class RegisterViewTests(TestCase):
 
         self.assertEqual(len(USER_MODEL.objects.all()), 2)
 
+    def test_register_success_logs_in(self):
+        """
+        Successful registration automatically logs the new user in.
+        """
+        # TODO
 
-class LoginViewTests(TestCase):
+
+class LoginViewTests(AccountsTestCase):
 
     def test_login_empty(self):
         """
         Trying to log in with empty fields
         refreshes the page with an error message.
         """
-        # TODO both fields empty and then password empty
+        self.register_user()
+        url = reverse('accounts:login')
+
+        form_to_post = {}
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertTrue('username' in response.context['form'].errors)
+        self.assertTrue('password' in response.context['form'].errors)
+
+        form_to_post['username'] = self.login_form['phone_number']
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertFalse('username' in response.context['form'].errors)
+        self.assertTrue('password' in response.context['form'].errors)
+
+        form_to_post['password'] = self.login_form['password']
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertRedirects(response, reverse('accounts:profile'))
 
     def test_login_incorrect(self):
         """
         Trying to log in with incorrect credentials
         refreshes the page with an error message.
         """
-        # TODO
+        self.register_user()
+        url = reverse('accounts:login')
+
+        form_to_post = {
+            'username': self.login_form['phone_number'] + '1',
+            'password': self.login_form['password'] + '1',
+        }
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertTrue('__all__' in response.context['form'].errors)
+
+        form_to_post['username'] = self.login_form['phone_number']
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertTrue('__all__' in response.context['form'].errors)
+
+        form_to_post['password'] = self.login_form['password']
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertRedirects(response, reverse('accounts:profile'))
 
     def test_login_with_various_phone_formats(self):
         """
@@ -175,6 +236,13 @@ class LoginViewTests(TestCase):
         """
         Email is stored in lowercase and email provided to login
         converted to lowercase before verifying.
+        """
+        # TODO
+
+    def test_login_next_redirect(self):
+        """
+        Redirected to login and logged in users
+        proceed according to next parameter.
         """
         # TODO
 
