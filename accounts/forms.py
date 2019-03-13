@@ -1,5 +1,6 @@
 from django import forms
-from django.contrib.auth.forms import ReadOnlyPasswordHashField
+from django.contrib.auth.forms import (
+    ReadOnlyPasswordHashField, AuthenticationForm)
 
 import re
 from .models import User
@@ -84,3 +85,13 @@ class UserChangeForm(forms.ModelForm):
         # This is done here, rather than on the field, because the
         # field does not have access to the initial value
         return self.initial["password"]
+
+
+class CustomAuthForm(AuthenticationForm):
+    """A form for logging in with password and either email or phone number.
+    """
+    def clean_username(self):
+        # store only digits of phone numbers
+        # TODO email
+        username = self.cleaned_data.get("username")
+        return re.sub('\D', '', username)

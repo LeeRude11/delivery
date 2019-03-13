@@ -2,7 +2,7 @@ from django.views.generic import base, edit
 from django.contrib import auth
 from django.urls import reverse_lazy
 
-from .forms import UserCreationForm
+from .forms import UserCreationForm, CustomAuthForm
 
 
 class ProfileView(base.TemplateView):
@@ -26,3 +26,7 @@ class RegisterView(edit.CreateView):
     form_class = UserCreationForm
     # TODO login automatically
     success_url = reverse_lazy('accounts:login')
+
+
+class CustomLoginView(auth.views.LoginView):
+    form_class = CustomAuthForm
