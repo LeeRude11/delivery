@@ -4,6 +4,7 @@ from django.contrib.auth.forms import (
 
 import re
 from .models import User
+EMAIL_CHECK = '@'
 
 
 class UserCreationForm(forms.ModelForm):
@@ -92,6 +93,8 @@ class CustomAuthForm(AuthenticationForm):
     """
     def clean_username(self):
         # store only digits of phone numbers
-        # TODO email
         username = self.cleaned_data.get("username")
-        return re.sub('\D', '', username)
+        if EMAIL_CHECK in username:
+            return username.strip()
+        else:
+            return re.sub('\D', '', username)
