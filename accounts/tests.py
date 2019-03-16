@@ -69,9 +69,7 @@ class AccountsTestCase(TestCase):
         """
         Response doesn't have error messages.
         """
-        # TODO profile page might have a form; all forms have empty errors
-        with self.assertRaises((KeyError, AttributeError)):
-            getattr(response.context['form'], 'errors')
+        self.assertEqual(response.context['form'].errors, {})
 
 
 class RegisterViewTests(AccountsTestCase):
@@ -300,6 +298,22 @@ class LoginViewTests(AccountsTestCase):
 
 class ProfileViewTests(AccountsTestCase):
 
+    """
+    Profile view uses a reduced version of the same form as Register view,
+    making form validation tests unnecessary.
+    """
+
+    profile_page_fields = [
+        'phone_number',
+        'first_name',
+        'second_name',
+        'street',
+        'house',
+        'email',
+        'date_of_birth',
+        'apartment'
+    ]
+
     def test_login_required(self):
         """
         Only authorized users can access profile page.
@@ -315,6 +329,62 @@ class ProfileViewTests(AccountsTestCase):
         self.register_user()
         response = self.client.get(profile_url, follow=True)
         self.assertNotContains(response, error_msg)
+
+    def test_profile_displays_form(self):
+        """
+        Profile page displays a form similar to registration form
+        but without passwords fields, and it allows users
+        to update their personal info.
+        """
+        self.register_user()
+        url = reverse('accounts:profile')
+        response = self.client.get(url, follow=True)
+        form_fields = list(response.context['form'].fields.keys())
+
+        self.assertEqual(len(form_fields), len(self.profile_page_fields))
+        for field in self.profile_page_fields:
+            try:
+                form_fields.remove(field)
+            except ValueError:
+                raise AssertionError
+        self.assertEqual(len(form_fields), 0)
+
+    def test_profile_form_prefilled(self):
+        """
+        Profile page form is prefilled with user info.
+        """
+        self.register_user()
+        url = reverse('accounts:profile')
+        response = self.client.get(url, follow=True)
+        form_fields_w_values = response.context['form'].initial
+        for k, v in form_fields_w_values.items():
+            self.assertEqual(v, self.user_for_tests[k])
+
+    def test_profile_page_change_password_link(self):
+        """
+        Profile page is rendered with a link to change password page.
+        """
+        # TODO to selenium tests
+
+    def test_profile_page_update_success(self):
+        """
+        Users are able to update their information.
+        """
+        self.register_user()
+        url = reverse('accounts:profile')
+
+        updated_user = {}
+        for field in self.profile_page_fields:
+            try:
+                updated_user[field] = self.user_for_tests[field] + '1'
+            except TypeError:
+                # TODO date field
+                updated_user[field] = self.user_for_tests[field]
+        self.client.post(url, updated_user, follow=True)
+        response = self.client.get(url, follow=True)
+        form_fields_w_values = response.context['form'].initial
+        for k, v in form_fields_w_values.items():
+            self.assertEqual(v, updated_user[k])
 
 
 class ChangePasswordViewTests(TestCase):
