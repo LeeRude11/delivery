@@ -1,11 +1,12 @@
 from django.views.generic import base, edit
 from django.contrib import auth
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy
 from django.contrib.auth import login, authenticate
 from django.shortcuts import render, redirect
 
-from .forms import UserCreationForm, CustomAuthForm
+from .forms import UserCreationForm, UserUpdateForm, CustomAuthForm
 SUCCESS_REG_REDIRECT = 'accounts:profile'
 
 
@@ -18,6 +19,21 @@ class ProfileView(LoginRequiredMixin, base.TemplateView):
         user = self.request.user
         context['username'] = user.get_short_name()
         return context
+
+
+@login_required
+def profile(request):
+    """
+    Render a populated form with user's info, which can be updated.
+    """
+    if request.method == 'POST':
+        form = UserUpdateForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('accounts:profile')
+    else:
+        form = UserUpdateForm(instance=request.user)
+    return render(request, 'registration/profile.html', {'form': form})
 
 
 class CustomPasswordChangeView(auth.views.PasswordChangeView):
