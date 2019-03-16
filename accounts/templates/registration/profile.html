@@ -6,4 +6,10 @@
 <div>
   Hey. It's a profile page for {{ username }}.
 </div>
+<form method="post" action="{% url 'accounts:profile' %}">
+{% csrf_token %}
+  {{ form.as_p }}
+
+  <input type="submit" value="Update">
+</form>
 {% endblock %}
