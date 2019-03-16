@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import (
     ReadOnlyPasswordHashField, AuthenticationForm)
+from django.utils.translation import gettext_lazy as _
 
 import re
 from .models import User
@@ -91,10 +92,17 @@ class UserChangeForm(forms.ModelForm):
 class CustomAuthForm(AuthenticationForm):
     """A form for logging in with password and either email or phone number.
     """
+    error_messages = {
+        'invalid_login': _(
+            "Please enter a correct phone number (or email) and password."
+        ),
+        'inactive': _("This account is inactive."),
+    }
+
     def clean_username(self):
         # store only digits of phone numbers
         username = self.cleaned_data.get("username")
         if EMAIL_CHECK in username:
-            return username.strip()
+            return username.strip().lower()
         else:
             return re.sub('\D', '', username)
