@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from datetime import date
+from django.contrib import auth
 
 EMAIL = 'test@example.com'
 USER_MODEL = get_user_model()
@@ -54,10 +55,6 @@ class AccountsTestCase(TestCase):
         'house': 'test house',
         'apartment': 'test apartment'
     }
-    login_form = {
-        'phone_number': '12345',
-        'password': 'testpassword'
-    }
     phone_format_variations = ['+12345', '1(23)45', '123-45']
 
     def register_user(self):
@@ -67,6 +64,14 @@ class AccountsTestCase(TestCase):
         user = self.user_for_tests.copy()
         url = reverse('accounts:register')
         self.client.post(url, user, follow=True)
+
+    def no_error_msgs(self, response):
+        """
+        Response doesn't have error messages.
+        """
+        # TODO profile page might have a form; all forms have empty errors
+        with self.assertRaises((KeyError, AttributeError)):
+            getattr(response.context['form'], 'errors')
 
 
 class RegisterViewTests(AccountsTestCase):
@@ -81,10 +86,11 @@ class RegisterViewTests(AccountsTestCase):
         for i, field in enumerate(self.required_fields):
             form_to_post[field] = self.user_for_tests[field]
             response = self.client.post(url, form_to_post, follow=True)
-            self.assertFalse(field in response.context['form'].errors)
             try:
+                self.assertFalse(field in response.context['form'].errors)
                 next_field = self.required_fields[i+1]
-            except IndexError:
+            except (IndexError, KeyError):
+                # TODO KeyError as no form in /profile redirected to
                 # all required fields are filled and user is registered
                 self.assertEqual(len(USER_MODEL.objects.all()), 1)
             else:
@@ -160,8 +166,7 @@ class RegisterViewTests(AccountsTestCase):
 
         second_user['phone_number'] = f'0{first_user["phone_number"]}'
         response = self.client.post(url, second_user, follow=True)
-        self.assertFalse('phone_number' in response.context['form'].errors)
-        self.assertFalse('email' in response.context['form'].errors)
+        self.no_error_msgs(response)
 
         self.assertEqual(len(USER_MODEL.objects.all()), 2)
 
@@ -169,7 +174,12 @@ class RegisterViewTests(AccountsTestCase):
         """
         Successful registration automatically logs the new user in.
         """
-        # TODO
+        user = auth.get_user(self.client)
+        self.assertFalse(user.is_authenticated)
+
+        self.register_user()
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
 
 
 class LoginViewTests(AccountsTestCase):
@@ -187,13 +197,14 @@ class LoginViewTests(AccountsTestCase):
         self.assertTrue('username' in response.context['form'].errors)
         self.assertTrue('password' in response.context['form'].errors)
 
-        form_to_post['username'] = self.login_form['phone_number']
+        form_to_post['username'] = self.user_for_tests['phone_number']
         response = self.client.post(url, form_to_post, follow=True)
         self.assertFalse('username' in response.context['form'].errors)
         self.assertTrue('password' in response.context['form'].errors)
 
-        form_to_post['password'] = self.login_form['password']
+        form_to_post['password'] = self.user_for_tests['password1']
         response = self.client.post(url, form_to_post, follow=True)
+        self.no_error_msgs(response)
         self.assertRedirects(response, reverse('accounts:profile'))
 
     def test_login_incorrect(self):
@@ -205,52 +216,105 @@ class LoginViewTests(AccountsTestCase):
         url = reverse('accounts:login')
 
         form_to_post = {
-            'username': self.login_form['phone_number'] + '1',
-            'password': self.login_form['password'] + '1',
+            'username': self.user_for_tests['phone_number'] + '1',
+            'password': self.user_for_tests['password1'] + '1',
         }
         response = self.client.post(url, form_to_post, follow=True)
         self.assertTrue('__all__' in response.context['form'].errors)
 
-        form_to_post['username'] = self.login_form['phone_number']
+        form_to_post['username'] = self.user_for_tests['phone_number']
         response = self.client.post(url, form_to_post, follow=True)
         self.assertTrue('__all__' in response.context['form'].errors)
 
-        form_to_post['password'] = self.login_form['password']
+        form_to_post['password'] = self.user_for_tests['password1']
         response = self.client.post(url, form_to_post, follow=True)
         self.assertRedirects(response, reverse('accounts:profile'))
+        self.no_error_msgs(response)
 
     def test_login_with_various_phone_formats(self):
         """
         Provided phone number is formatted to pass if correct.
         """
-        # TODO add hyphens, parentheses, pluses
+        self.register_user()
+        url = reverse('accounts:login')
+        form_to_post = {
+            'password': self.user_for_tests['password1']
+        }
+        for variation in self.phone_format_variations:
+            form_to_post['username'] = variation
+            response = self.client.post(url, form_to_post, follow=True)
+            self.no_error_msgs(response)
+            self.assertRedirects(response, reverse('accounts:profile'))
 
     def test_login_with_email(self):
         """
         If user provided an email on registration,
         check his input against it and log in on success.
         """
-        # TODO
+        self.register_user()
+        url = reverse('accounts:login')
+        form_to_post = {
+            'username': self.user_for_tests['email'],
+            'password': self.user_for_tests['password1']
+        }
+        response = self.client.post(url, form_to_post, follow=True)
+        self.no_error_msgs(response)
 
     def test_email_case_indifferent(self):
         """
         Email is stored in lowercase and email provided to login
         converted to lowercase before verifying.
         """
-        # TODO
+        self.register_user()
+        url = reverse('accounts:login')
+        form_to_post = {
+            'username': self.user_for_tests['email'].upper(),
+            'password': self.user_for_tests['password1']
+        }
+        response = self.client.post(url, form_to_post, follow=True)
+        self.no_error_msgs(response)
 
     def test_login_next_redirect(self):
         """
         Redirected to login and logged in users
         proceed according to next parameter.
         """
-        # TODO
+        # TODO move this test to delivery app selenium tests
+
+    def test_login_username_errors(self):
+        """
+        Login page error tells user to provide either email or phone number.
+        """
+        error_message = " ".join(["Please enter a correct phone number",
+                                 "(or email) and password."])
+
+        url = reverse('accounts:login')
+        form_to_post = {
+            'username': self.user_for_tests['email'] + '1',
+            'password': self.user_for_tests['password1'] + '1'
+        }
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertTrue(
+            error_message in dict(response.context['form'].errors)['__all__'])
 
 
-class ProfileViewTests(TestCase):
+class ProfileViewTests(AccountsTestCase):
 
-    # TODO
-    pass
+    def test_login_required(self):
+        """
+        Only authorized users can access profile page.
+        """
+        profile_url = reverse('accounts:profile')
+        error_msg = "Please login to see this page."
+        next_url = reverse('accounts:login') + '?next=' + profile_url
+
+        response = self.client.get(profile_url, follow=True)
+        self.assertRedirects(response, next_url)
+        self.assertContains(response, error_msg)
+
+        self.register_user()
+        response = self.client.get(profile_url, follow=True)
+        self.assertNotContains(response, error_msg)
 
 
 class ChangePasswordViewTests(TestCase):
