@@ -314,7 +314,7 @@ class ProfileViewTests(AccountsTestCase):
         'apartment'
     ]
 
-    def test_login_required(self):
+    def test_profile_login_required(self):
         """
         Only authorized users can access profile page.
         """
@@ -372,14 +372,15 @@ class ProfileViewTests(AccountsTestCase):
         """
         self.register_user()
         url = reverse('accounts:profile')
+        ARBITRARY_NEW_DATE = date(1990, 1, 1)
 
         updated_user = {}
         for field in self.profile_page_fields:
             try:
                 updated_user[field] = self.user_for_tests[field] + '1'
             except TypeError:
-                # TODO date field
-                updated_user[field] = self.user_for_tests[field]
+                # date field
+                updated_user[field] = ARBITRARY_NEW_DATE
         self.client.post(url, updated_user, follow=True)
         response = self.client.get(url, follow=True)
         form_fields_w_values = response.context['form'].initial
@@ -387,7 +388,132 @@ class ProfileViewTests(AccountsTestCase):
             self.assertEqual(v, updated_user[k])
 
 
-class ChangePasswordViewTests(TestCase):
+class PasswordChangeViewTests(AccountsTestCase):
 
-    pass
-    # TODO
+    NEW_PASSWORD = 'newtestpassword'
+
+    def password_change_dict(self):
+        return {
+            'old_password': self.user_for_tests['password1'],
+            'new_password1': self.NEW_PASSWORD,
+            'new_password2': self.NEW_PASSWORD
+        }
+
+    def test_password_change_login_required(self):
+        """
+        Only authorized users can access password change page.
+        """
+        url = reverse('accounts:password_change')
+        response = self.client.post(url, follow=True)
+        next_url = reverse('accounts:login') + '?next=' + url
+        self.assertRedirects(response, next_url)
+        self.assertContains(response, "Please login to see this page.")
+
+    def test_password_change_success(self):
+        """
+        User's password is successfully updated.
+        """
+        self.register_user()
+        new_user = USER_MODEL.objects.get()
+        url = reverse('accounts:password_change')
+        self.assertFalse(new_user.check_password(self.NEW_PASSWORD))
+
+        response = self.client.post(
+            url, self.password_change_dict(), follow=True)
+        self.no_error_msgs(response)
+        new_user = USER_MODEL.objects.get()
+        self.assertTrue(new_user.check_password(self.NEW_PASSWORD))
+
+    def test_changed_password_logged_in(self):
+        """
+        Changing the password doesn't log the user out.
+        """
+        self.register_user()
+        url = reverse('accounts:password_change')
+
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        self.client.post(url, self.password_change_dict(), follow=True)
+
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+    def test_all_fields_provided(self):
+        """
+        All 3 fields return an error if missing.
+        """
+        self.register_user()
+        url = reverse('accounts:password_change')
+
+        full_form = self.password_change_dict()
+        form_to_post = {}
+
+        fields_list = ['old_password', 'new_password1', 'new_password2']
+        fields_dict = {
+            'errors': fields_list.copy(),
+            'clean': []
+        }
+        for field in fields_list:
+            response = self.client.post(url, form_to_post, follow=True)
+            for item in fields_dict['errors']:
+                self.assertTrue(item in response.context['form'].errors)
+            for item in fields_dict['clean']:
+                self.assertFalse(item in response.context['form'].errors)
+            form_to_post[field] = full_form[field]
+            fields_dict['errors'].remove(field)
+            fields_dict['clean'].append(field)
+
+        response = self.client.post(url, form_to_post, follow=True)
+        self.no_error_msgs(response)
+
+        new_user = USER_MODEL.objects.get()
+        self.assertTrue(new_user.check_password(self.NEW_PASSWORD))
+
+    def test_old_password_correct(self):
+        """
+        Return an error if old password is not correct.
+        """
+        self.register_user()
+        url = reverse('accounts:password_change')
+
+        form_to_post = self.password_change_dict()
+        form_to_post['old_password'] = form_to_post['old_password'] + '1'
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertTrue('old_password' in response.context['form'].errors)
+        new_user = USER_MODEL.objects.get()
+        self.assertTrue(
+            new_user.check_password(self.user_for_tests['password1']))
+
+        form_to_post['old_password'] = self.user_for_tests['password1']
+        response = self.client.post(url, form_to_post, follow=True)
+        self.no_error_msgs(response)
+        new_user = USER_MODEL.objects.get()
+        self.assertTrue(new_user.check_password(self.NEW_PASSWORD))
+
+    def test_new_password_no_match(self):
+        """
+        Return an error if new password and cofnirmation don't match.
+        """
+        self.register_user()
+        url = reverse('accounts:password_change')
+
+        form_to_post = self.password_change_dict()
+        form_to_post['new_password2'] = form_to_post['new_password2'] + '1'
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertTrue('new_password2' in response.context['form'].errors)
+        new_user = USER_MODEL.objects.get()
+        self.assertTrue(
+            new_user.check_password(self.user_for_tests['password1']))
+
+        form_to_post['new_password2'] = form_to_post['new_password1']
+        response = self.client.post(url, form_to_post, follow=True)
+        self.no_error_msgs(response)
+        new_user = USER_MODEL.objects.get()
+        self.assertTrue(new_user.check_password(self.NEW_PASSWORD))
+
+    def test_new_password_validation(self):
+        """
+        Password is rejected if it doesn't meet requirements.
+        """
+        # TODO
