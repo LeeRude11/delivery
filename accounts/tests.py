@@ -8,26 +8,11 @@ EMAIL = 'test@example.com'
 USER_MODEL = get_user_model()
 
 
-class UserModelTests(TestCase):
+class AccountsTestConstants(object):
 
-    def test_user_created(self):
-        """
-        User is created using create_user()
-        """
-        new_user = USER_MODEL.objects.create_user(*("1" for i in range(6)))
-        self.assertEqual(new_user, USER_MODEL.objects.get())
-
-    def test_superuser_created(self):
-        """
-        Superuser is created using create_superuser()
-        """
-        new_superuser = USER_MODEL.objects.create_superuser(
-            *("1" for i in range(6)))
-        self.assertEqual(new_superuser, USER_MODEL.objects.get())
-        self.assertTrue(USER_MODEL.objects.get().is_admin)
-
-
-class AccountsTestCase(TestCase):
+    """
+    Constants also exported to Selenium tests.
+    """
 
     required_fields = [
         'phone_number',
@@ -56,6 +41,40 @@ class AccountsTestCase(TestCase):
         'apartment': 'test apartment'
     }
     phone_format_variations = ['+12345', '1(23)45', '123-45']
+
+    def user_without_password_fields(self):
+        user = self.user_for_tests.copy()
+        user.pop('password1')
+        user.pop('password2')
+        return user
+
+    def user_for_create_user(self):
+        user = self.user_without_password_fields()
+        user['password'] = self.user_for_tests['password1']
+        return user
+
+
+class UserModelTests(TestCase, AccountsTestConstants):
+
+    def test_user_created(self):
+        """
+        User is created using create_user()
+        """
+        new_user = USER_MODEL.objects.create_user(
+            **self.user_for_create_user())
+        self.assertEqual(new_user, USER_MODEL.objects.get())
+
+    def test_superuser_created(self):
+        """
+        Superuser is created using create_superuser()
+        """
+        new_superuser = USER_MODEL.objects.create_superuser(
+            *("1" for i in range(6)))
+        self.assertEqual(new_superuser, USER_MODEL.objects.get())
+        self.assertTrue(USER_MODEL.objects.get().is_admin)
+
+
+class AccountsTestCase(TestCase, AccountsTestConstants):
 
     def register_user(self):
         """
@@ -130,7 +149,8 @@ class RegisterViewTests(AccountsTestCase):
             user['phone_number'] = variation
             self.client.post(url, user, follow=True)
             added_user = USER_MODEL.objects.get()
-            self.assertEqual(added_user.phone_number, '12345')
+            self.assertEqual(
+                added_user.phone_number, self.user_for_tests['phone_number'])
             added_user.delete()
 
     def test_phone_no_digits(self):
@@ -359,12 +379,6 @@ class ProfileViewTests(AccountsTestCase):
         form_fields_w_values = response.context['form'].initial
         for k, v in form_fields_w_values.items():
             self.assertEqual(v, self.user_for_tests[k])
-
-    def test_profile_page_change_password_link(self):
-        """
-        Profile page is rendered with a link to change password page.
-        """
-        # TODO to selenium tests
 
     def test_profile_page_update_success(self):
         """

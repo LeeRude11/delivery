@@ -43,6 +43,7 @@ class MenuListTests(FirefoxTests):
         menu_url = self.live_server_url + reverse('menu:menu')
         self.browser.get(menu_url)
         # TODO does find_element raises Exception if more than one found?
+        # TODO it doesn't - check that it's the only one
         self.assertEqual(
             self.browser.find_element_by_tag_name('li').text,
             "No items in menu :("

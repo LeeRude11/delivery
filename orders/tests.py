@@ -87,14 +87,14 @@ class OrderInfoTests(TestCase):
 class CustomTestCase(TestCase):
 
     def assert_redirect_and_error_msg(
-            self, path, redirect_to='accounts:login', get=True,
+            self, viewname, redirect_to='accounts:login', get=True,
             msg_text="Must be logged in."):
         """
         Page redirects and shows an error message.
         Default is for a users-only page.
         Only accepts GET and POST requests
         """
-        url = reverse(path)
+        url = reverse(viewname)
         if get:
             response = self.client.get(url, follow=True)
         else:
@@ -111,12 +111,12 @@ class CustomTestCase(TestCase):
         user = create_new_user()
         self.client.login(username=user.phone_number, password='testpassword')
 
-    def user_access_url(self, path):
+    def user_access_url(self, viewname):
         """
-        Create and login a test user, then access passed path.
+        Create and login a test user, then access passed viewname.
         """
         self.login_test_user()
-        return reverse(path)
+        return reverse(viewname)
 
     def fill_session_cart(self):
         expected_contents = []
@@ -142,7 +142,7 @@ class ShoppingCartViewTests(CustomTestCase):
         """
         TEMPORARY - unauthorized users can not access shopping cart page.
         """
-        self.assert_redirect_and_error_msg(path='orders:shopping_cart')
+        self.assert_redirect_and_error_msg(viewname='orders:shopping_cart')
 
     def test_shopping_cart_is_empty(self):
         """
@@ -286,7 +286,7 @@ class ProcessOrderViewTests(CustomTestCase):
         """
         TEMPORARY - Process order redirects unauthorized users to login.
         """
-        self.assert_redirect_and_error_msg(path='orders:process_order')
+        self.assert_redirect_and_error_msg(viewname='orders:process_order')
 
     def test_process_order_redirects_get(self):
         """

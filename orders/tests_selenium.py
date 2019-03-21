@@ -71,11 +71,13 @@ class ShoppingCartTests(OrdersFirefoxTests):
         """
         Amount of items in cart can be changed.
         """
+        # TODO
 
     def test_remove_item_from_cart(self):
         """
         Items in cart can be removed.
         """
+        # TODO
 
     def test_link_to_checkout(self):
         """
