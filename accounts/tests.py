@@ -40,6 +40,11 @@ class AccountsTestConstants(object):
         'house': 'test house',
         'apartment': 'test apartment'
     }
+    login_fields = {
+        # email is also suitable for username field
+        'username': 'phone_number',
+        'password': 'password1',
+    }
     phone_format_variations = ['+12345', '1(23)45', '123-45']
 
     def user_without_password_fields(self):
@@ -52,6 +57,26 @@ class AccountsTestConstants(object):
         user = self.user_without_password_fields()
         user['password'] = self.user_for_tests['password1']
         return user
+
+    def login_form_dict(self):
+        """
+        Return a dict to pass into login form.
+        """
+        form = {}
+        for form_field, user_field in self.login_fields.items():
+            form[form_field] = self.user_for_tests[user_field]
+        return form
+
+    def get_required_fields_user(self):
+        return {
+            field: self.user_for_tests[field] for field in self.required_fields
+        }
+
+    def get_profile_page_fields(self):
+        """
+        Profile page has all user info fields except password.
+        """
+        return self.user_without_password_fields().keys()
 
 
 class UserModelTests(TestCase, AccountsTestConstants):
@@ -76,6 +101,10 @@ class UserModelTests(TestCase, AccountsTestConstants):
 
 class AccountsTestCase(TestCase, AccountsTestConstants):
 
+    """
+    Methods for tests.
+    """
+
     def register_user(self):
         """
         POST a register form.
@@ -92,6 +121,20 @@ class AccountsTestCase(TestCase, AccountsTestConstants):
 
 
 class RegisterViewTests(AccountsTestCase):
+
+    def test_register_success(self):
+        """
+        Registration is successful and user object is saved.
+        """
+        url = reverse('accounts:register')
+        form_to_post = self.user_for_tests.copy()
+        self.assertEqual(len(USER_MODEL.objects.all()), 0)
+        self.client.post(url, form_to_post, follow=True)
+        user = USER_MODEL.objects.get()
+        for field in self.user_without_password_fields():
+            field_value = getattr(user, field)
+            self.assertEqual(field_value, self.user_for_tests[field])
+        self.assertTrue(user.check_password(form_to_post['password1']))
 
     def test_register_empty(self):
         """
@@ -119,9 +162,7 @@ class RegisterViewTests(AccountsTestCase):
         Unrequired fields are...unrequired.
         """
         url = reverse('accounts:register')
-        user = self.user_for_tests.copy()
-        for field in self.unrequired_fields:
-            user.pop(field)
+        user = self.get_required_fields_user()
         self.client.post(url, user, follow=True)
         new_user = USER_MODEL.objects.get()
         for field in self.unrequired_fields:
@@ -198,6 +239,12 @@ class RegisterViewTests(AccountsTestCase):
         self.register_user()
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
+
+    def test_register_date_format(self):
+        """
+        Date format?
+        """
+        # TODO
 
 
 class LoginViewTests(AccountsTestCase):
@@ -298,6 +345,7 @@ class LoginViewTests(AccountsTestCase):
         proceed according to next parameter.
         """
         # TODO move this test to delivery app selenium tests
+        # OR accounts selenium?..
 
     def test_login_username_errors(self):
         """
@@ -322,17 +370,6 @@ class ProfileViewTests(AccountsTestCase):
     Profile view uses a reduced version of the same form as Register view,
     making form validation tests unnecessary.
     """
-
-    profile_page_fields = [
-        'phone_number',
-        'first_name',
-        'second_name',
-        'street',
-        'house',
-        'email',
-        'date_of_birth',
-        'apartment'
-    ]
 
     def test_profile_login_required(self):
         """
@@ -361,8 +398,9 @@ class ProfileViewTests(AccountsTestCase):
         response = self.client.get(url, follow=True)
         form_fields = list(response.context['form'].fields.keys())
 
-        self.assertEqual(len(form_fields), len(self.profile_page_fields))
-        for field in self.profile_page_fields:
+        profile_page_fields = self.get_profile_page_fields()
+        self.assertEqual(len(form_fields), len(profile_page_fields))
+        for field in profile_page_fields:
             try:
                 form_fields.remove(field)
             except ValueError:
@@ -389,7 +427,7 @@ class ProfileViewTests(AccountsTestCase):
         ARBITRARY_NEW_DATE = date(1990, 1, 1)
 
         updated_user = {}
-        for field in self.profile_page_fields:
+        for field in self.get_profile_page_fields():
             try:
                 updated_user[field] = self.user_for_tests[field] + '1'
             except TypeError:
@@ -463,7 +501,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         full_form = self.password_change_dict()
         form_to_post = {}
 
-        fields_list = ['old_password', 'new_password1', 'new_password2']
+        fields_list = list(self.password_change_dict())
         fields_dict = {
             'errors': fields_list.copy(),
             'clean': []
@@ -529,5 +567,20 @@ class PasswordChangeViewTests(AccountsTestCase):
     def test_new_password_validation(self):
         """
         Password is rejected if it doesn't meet requirements.
+        """
+        # TODO
+
+
+class LogoutViewTests(AccountsTestCase):
+
+    def test_logout_authorized_user(self):
+        """
+        Logout view logs out authorized users.
+        """
+        # TODO
+
+    def test_logout_anon_users_login(self):
+        """
+        Anonymous users accessing logout view are redirected to login page.
         """
         # TODO

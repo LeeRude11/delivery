@@ -13,6 +13,12 @@ USER_MODEL = get_user_model()
 
 class FirefoxAccountsTests(StaticLiveServerTestCase, AccountsTestConstants):
 
+    LOGIN_URL = reverse('accounts:login')
+    LOGOUT_URL = reverse('accounts:logout')
+    REGISTER_URL = reverse('accounts:register')
+    PROFILE_URL = reverse('accounts:profile')
+    PASS_CHANGE_URL = reverse('accounts:password_change')
+
     def create_new_user(self):
         """Create a new user for tests"""
         return USER_MODEL.objects.create_user(
@@ -53,8 +59,26 @@ class FirefoxAccountsTests(StaticLiveServerTestCase, AccountsTestConstants):
                 len(self.browser.find_elements_by_id(field_id)), 1
             )
 
+    def fill_submit_form_with_values(self, form, values):
+        """
+        Fill a passed form with values from a dictionary,
+        finding fields using its keys, and submit it.
+        """
+        for key, value in values.items():
+            field = form.find_element_by_id('id_' + key)
+            field.clear()
+            # TODO can't pass datetime as is
+            field.send_keys(str(value))
+        form.submit()
+        sleep(0.5)
+
 
 class RegisterTests(FirefoxAccountsTests):
+
+    def setUp(self):
+        super().setUp()
+        url = self.live_server_url + self.REGISTER_URL
+        self.browser.get(url)
 
     def get_register_form(self):
         """
@@ -66,28 +90,23 @@ class RegisterTests(FirefoxAccountsTests):
         """
         All expected fields are rendered.
         """
-        url = self.live_server_url + reverse('accounts:register')
-        self.browser.get(url)
         register_fields = self.user_for_tests.keys()
         self.verify_available_fields(register_fields)
 
     def test_register_empty(self):
         """
-        Can't POST with empty required fields.
+        Can not register with empty values in required fields.
         """
         ERROR_MSG = "This field is required."
-        url = self.live_server_url + reverse('accounts:register')
-        self.browser.get(url)
         register_form = self.get_register_form()
-        for req_field in self.required_fields:
-            field = register_form.find_element_by_id('id_' + req_field)
-            field.clear()
-            field.send_keys()
-        register_form.submit()
+        empty_required_fields = {
+            field: "" for field in self.required_fields
+        }
+        self.fill_submit_form_with_values(register_form,
+                                          empty_required_fields)
         # user was not created
         self.assertRaises(USER_MODEL.DoesNotExist, USER_MODEL.objects.get)
         # check that each field displays an error
-        sleep(0.5)
         errorlist = self.browser.find_elements_by_class_name('errorlist')
         self.assertEqual(len(errorlist), len(self.required_fields))
         for error in errorlist:
@@ -97,16 +116,9 @@ class RegisterTests(FirefoxAccountsTests):
         """
         Registration is successful and all provided fields are stored.
         """
-        url = self.live_server_url + reverse('accounts:register')
-        self.browser.get(url)
         register_form = self.get_register_form()
-        for key, value in self.user_for_tests.items():
-            field = register_form.find_element_by_id('id_' + key)
-            field.clear()
-            # TODO can't pass datetime as is
-            field.send_keys(str(value))
-        register_form.submit()
-        sleep(0.5)
+        self.fill_submit_form_with_values(register_form,
+                                          self.user_for_tests)
         user = USER_MODEL.objects.get()
         for field in self.user_without_password_fields():
             field_value = getattr(user, field)
@@ -117,19 +129,122 @@ class RegisterTests(FirefoxAccountsTests):
         """
         Registration is successful without providing optional fields.
         """
-        url = self.live_server_url + reverse('accounts:register')
-        self.browser.get(url)
         register_form = self.get_register_form()
-        for key in self.required_fields:
-            field = register_form.find_element_by_id('id_' + key)
-            field.clear()
-            field.send_keys(self.user_for_tests[key])
-        register_form.submit()
-        sleep(0.5)
+        required_fields_user = self.get_required_fields_user()
+        self.fill_submit_form_with_values(register_form,
+                                          required_fields_user)
         user = USER_MODEL.objects.get()
         for field in self.unrequired_fields:
             field_value = getattr(user, field)
             self.assertTrue(field_value in (None, ''))
+
+
+class LoginTests(FirefoxAccountsTests):
+
+    def setUp(self):
+        super().setUp()
+        url = self.live_server_url + self.LOGIN_URL
+        self.browser.get(url)
+
+    def get_login_form(self):
+        """
+        Return login form element.
+        """
+        return self.browser.find_element_by_tag_name('form')
+
+    def test_login_fields(self):
+        """
+        All expected fields are rendered.
+        """
+        self.verify_available_fields(self.login_fields.keys())
+
+    def test_login_empty(self):
+        """
+        Can not login without providing credentials.
+        """
+        ERROR_MSG = ("Your username and password didn't match. " +
+                     "Please try again.")
+        self.create_new_user()
+
+        self.assertTrue(self.browser.get_cookie('sessionid') is None)
+        login_form = self.get_login_form()
+        empty_login_fields = {
+            field: "" for field in self.login_fields.keys()
+        }
+        self.fill_submit_form_with_values(login_form, empty_login_fields)
+        error_element = self.browser.find_element_by_xpath(
+            f'//p[text()="{ERROR_MSG}"]')
+        self.assertTrue(error_element is not None)
+        # user was not logged in
+        self.assertTrue(self.browser.get_cookie('sessionid') is None)
+
+    def test_login_success(self):
+        """
+        Provding correct values successfully logs the user in.
+        """
+        self.create_new_user()
+
+        self.assertTrue(self.browser.get_cookie('sessionid') is None)
+
+        login_form = self.get_login_form()
+        self.fill_submit_form_with_values(login_form, self.login_form_dict())
+
+        self.assertTrue(self.browser.get_cookie('sessionid') is not None)
+
+
+class ProfileTests(FirefoxAccountsTests):
+
+    def setUp(self):
+        super().setUp()
+        self.login_browser_user()
+        url = self.live_server_url + self.PROFILE_URL
+        self.browser.get(url)
+
+    def test_profile_redirects_unauthorized(self):
+        """
+        Profile page is only accessible by authorized users.
+        """
+        # User is logged in on setUp - log him out for this test
+        logout_url = self.live_server_url + self.LOGOUT_URL
+        self.browser.get(logout_url)
+
+        url = self.live_server_url + self.PROFILE_URL
+        self.browser.get(url)
+
+        redirected_url = (self.live_server_url + self.LOGIN_URL + '?next=' +
+                          self.PROFILE_URL)
+        self.assertEqual(self.browser.current_url, redirected_url)
+
+    def test_profile_fields_rendered(self):
+        """
+        All expected fields are rendered.
+        """
+        self.verify_available_fields(self.get_profile_page_fields())
+
+    def test_profile_fields_prefilled(self):
+        """
+        All expected fields are correctly pre-filled.
+        """
+        profile_fields = self.user_without_password_fields()
+        for name, value in profile_fields.items():
+            # django fields ids are formatted "id=id_{field_name}"
+            field_id = 'id_' + name
+            field = self.browser.find_element_by_id(field_id)
+            self.assertEqual(
+                field.get_attribute('value'), str(value)
+            )
+
+    def test_profile_page_change_password_link(self):
+        """
+        Profile page is rendered with a link to change password page.
+        """
+        PASS_CHANGE_TEXT = "Change Password"
+        button = self.browser.find_element_by_link_text(PASS_CHANGE_TEXT)
+        link = button.get_attribute('href')
+        expected_link = self.live_server_url + self.PASS_CHANGE_URL
+        self.assertEqual(link, expected_link)
+        button.click()
+        self.assertEqual(self.browser.current_url, expected_link)
 
     def test_(self):
         """
@@ -137,17 +252,17 @@ class RegisterTests(FirefoxAccountsTests):
         # TODO
 
 
-class LoginTests(FirefoxAccountsTests):
+class PasswordChangeTests(FirefoxAccountsTests):
 
-    pass
+    """
+    Password change tests.
+    """
     # TODO
 
 
-class ProfileTests(FirefoxAccountsTests):
+class LogoutTests(FirefoxAccountsTests):
 
-    def test_profile_page_change_password_link(self):
-        """
-        Profile page is rendered with a link to change password page.
-        """
-        # TODO
+    """
+    Logout tests.
+    """
     # TODO

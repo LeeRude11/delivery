@@ -88,6 +88,7 @@ class ShoppingCartTests(OrdersFirefoxTests):
         url = self.live_server_url + reverse('orders:shopping_cart')
         self.browser.get(url)
         self.browser.find_element_by_link_text('Checkout').click()
+        # TODO - browser.current_url
         div = self.browser.find_element_by_tag_name('div')
         self.assertIn(
             "This is a checkout page.",
