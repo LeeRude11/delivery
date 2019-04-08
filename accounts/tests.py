@@ -46,6 +46,7 @@ class AccountsTestConstants(object):
         'password': 'password1',
     }
     phone_format_variations = ['+12345', '1(23)45', '123-45']
+    ARBITRARY_NEW_DATE = date(1990, 1, 1)
 
     def user_without_password_fields(self):
         user = self.user_for_tests.copy()
@@ -77,6 +78,25 @@ class AccountsTestConstants(object):
         Profile page has all user info fields except password.
         """
         return self.user_without_password_fields().keys()
+
+    def assert_single_user_fields(self, fields_dict):
+        """
+        Using provided fields dictionary,
+        ensure its values are equal to corresponding user values.
+        """
+        user = USER_MODEL.objects.get()
+        for field, value in fields_dict.items():
+            user_value = getattr(user, field)
+            self.assertEqual(user_value, value)
+
+    NEW_PASSWORD = 'newtestpassword'
+
+    def get_password_change_dict(self):
+        return {
+            'old_password': self.user_for_tests['password1'],
+            'new_password1': self.NEW_PASSWORD,
+            'new_password2': self.NEW_PASSWORD
+        }
 
 
 class UserModelTests(TestCase, AccountsTestConstants):
@@ -131,9 +151,7 @@ class RegisterViewTests(AccountsTestCase):
         self.assertEqual(len(USER_MODEL.objects.all()), 0)
         self.client.post(url, form_to_post, follow=True)
         user = USER_MODEL.objects.get()
-        for field in self.user_without_password_fields():
-            field_value = getattr(user, field)
-            self.assertEqual(field_value, self.user_for_tests[field])
+        self.assert_single_user_fields(self.user_without_password_fields())
         self.assertTrue(user.check_password(form_to_post['password1']))
 
     def test_register_empty(self):
@@ -161,13 +179,16 @@ class RegisterViewTests(AccountsTestCase):
         """
         Unrequired fields are...unrequired.
         """
+        # CharField can't be stored as NULL(None)
+        APARTMENT_VALUE = ''
+
         url = reverse('accounts:register')
         user = self.get_required_fields_user()
         self.client.post(url, user, follow=True)
-        new_user = USER_MODEL.objects.get()
-        for field in self.unrequired_fields:
-            field_value = getattr(new_user, field)
-            self.assertTrue(field_value in (None, ''))
+
+        unrequired_dict = {key: None for key in self.unrequired_fields}
+        unrequired_dict['apartment'] = APARTMENT_VALUE
+        self.assert_single_user_fields(unrequired_dict)
 
     def test_register_unrequired_stored(self):
         """
@@ -175,10 +196,10 @@ class RegisterViewTests(AccountsTestCase):
         """
         url = reverse('accounts:register')
         self.client.post(url, self.user_for_tests, follow=True)
-        user = USER_MODEL.objects.get()
-        for field in self.unrequired_fields:
-            field_value = getattr(user, field)
-            self.assertEqual(field_value, self.user_for_tests[field])
+
+        unrequired_dict = {
+            key: self.user_for_tests[key] for key in self.unrequired_fields}
+        self.assert_single_user_fields(unrequired_dict)
 
     def test_register_standard_phone(self):
         """
@@ -390,8 +411,7 @@ class ProfileViewTests(AccountsTestCase):
     def test_profile_displays_form(self):
         """
         Profile page displays a form similar to registration form
-        but without passwords fields, and it allows users
-        to update their personal info.
+        but without passwords fields.
         """
         self.register_user()
         url = reverse('accounts:profile')
@@ -404,6 +424,7 @@ class ProfileViewTests(AccountsTestCase):
             try:
                 form_fields.remove(field)
             except ValueError:
+                # profile field was not found in fields rendered for the page
                 raise AssertionError
         self.assertEqual(len(form_fields), 0)
 
@@ -424,7 +445,6 @@ class ProfileViewTests(AccountsTestCase):
         """
         self.register_user()
         url = reverse('accounts:profile')
-        ARBITRARY_NEW_DATE = date(1990, 1, 1)
 
         updated_user = {}
         for field in self.get_profile_page_fields():
@@ -432,7 +452,7 @@ class ProfileViewTests(AccountsTestCase):
                 updated_user[field] = self.user_for_tests[field] + '1'
             except TypeError:
                 # date field
-                updated_user[field] = ARBITRARY_NEW_DATE
+                updated_user[field] = self.ARBITRARY_NEW_DATE
         self.client.post(url, updated_user, follow=True)
         response = self.client.get(url, follow=True)
         form_fields_w_values = response.context['form'].initial
@@ -441,15 +461,6 @@ class ProfileViewTests(AccountsTestCase):
 
 
 class PasswordChangeViewTests(AccountsTestCase):
-
-    NEW_PASSWORD = 'newtestpassword'
-
-    def password_change_dict(self):
-        return {
-            'old_password': self.user_for_tests['password1'],
-            'new_password1': self.NEW_PASSWORD,
-            'new_password2': self.NEW_PASSWORD
-        }
 
     def test_password_change_login_required(self):
         """
@@ -471,7 +482,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         self.assertFalse(new_user.check_password(self.NEW_PASSWORD))
 
         response = self.client.post(
-            url, self.password_change_dict(), follow=True)
+            url, self.get_password_change_dict(), follow=True)
         self.no_error_msgs(response)
         new_user = USER_MODEL.objects.get()
         self.assertTrue(new_user.check_password(self.NEW_PASSWORD))
@@ -486,7 +497,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
 
-        self.client.post(url, self.password_change_dict(), follow=True)
+        self.client.post(url, self.get_password_change_dict(), follow=True)
 
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
@@ -498,10 +509,10 @@ class PasswordChangeViewTests(AccountsTestCase):
         self.register_user()
         url = reverse('accounts:password_change')
 
-        full_form = self.password_change_dict()
+        full_form = self.get_password_change_dict()
         form_to_post = {}
 
-        fields_list = list(self.password_change_dict())
+        fields_list = list(self.get_password_change_dict())
         fields_dict = {
             'errors': fields_list.copy(),
             'clean': []
@@ -529,7 +540,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         self.register_user()
         url = reverse('accounts:password_change')
 
-        form_to_post = self.password_change_dict()
+        form_to_post = self.get_password_change_dict()
         form_to_post['old_password'] = form_to_post['old_password'] + '1'
         response = self.client.post(url, form_to_post, follow=True)
         self.assertTrue('old_password' in response.context['form'].errors)
@@ -550,7 +561,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         self.register_user()
         url = reverse('accounts:password_change')
 
-        form_to_post = self.password_change_dict()
+        form_to_post = self.get_password_change_dict()
         form_to_post['new_password2'] = form_to_post['new_password2'] + '1'
         response = self.client.post(url, form_to_post, follow=True)
         self.assertTrue('new_password2' in response.context['form'].errors)
@@ -577,10 +588,21 @@ class LogoutViewTests(AccountsTestCase):
         """
         Logout view logs out authorized users.
         """
-        # TODO
+        self.register_user()
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        url = reverse('accounts:logout')
+        response = self.client.get(url, follow=True)
+        self.assertRedirects(response, reverse('accounts:login'))
+
+        user = auth.get_user(self.client)
+        self.assertFalse(user.is_authenticated)
 
     def test_logout_anon_users_login(self):
         """
         Anonymous users accessing logout view are redirected to login page.
         """
-        # TODO
+        url = reverse('accounts:logout')
+        response = self.client.get(url, follow=True)
+        self.assertRedirects(response, reverse('accounts:login'))

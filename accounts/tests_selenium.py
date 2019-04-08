@@ -72,6 +72,22 @@ class FirefoxAccountsTests(StaticLiveServerTestCase, AccountsTestConstants):
         form.submit()
         sleep(0.5)
 
+    def assert_redirects_unauthorized(self, target_url):
+        """
+        Unauthorized users are redirected to login page
+        with initial target url as next parameter.
+        """
+        # if user is logged in on setUp - log him out for this test
+        logout_url = self.live_server_url + self.LOGOUT_URL
+        self.browser.get(logout_url)
+
+        url = self.live_server_url + target_url
+        self.browser.get(url)
+
+        redirected_url = (self.live_server_url + self.LOGIN_URL + '?next=' +
+                          target_url)
+        self.assertEqual(self.browser.current_url, redirected_url)
+
 
 class RegisterTests(FirefoxAccountsTests):
 
@@ -200,20 +216,17 @@ class ProfileTests(FirefoxAccountsTests):
         url = self.live_server_url + self.PROFILE_URL
         self.browser.get(url)
 
+    def get_profile_update_form(self):
+        """
+        Return login form element.
+        """
+        return self.browser.find_element_by_tag_name('form')
+
     def test_profile_redirects_unauthorized(self):
         """
         Profile page is only accessible by authorized users.
         """
-        # User is logged in on setUp - log him out for this test
-        logout_url = self.live_server_url + self.LOGOUT_URL
-        self.browser.get(logout_url)
-
-        url = self.live_server_url + self.PROFILE_URL
-        self.browser.get(url)
-
-        redirected_url = (self.live_server_url + self.LOGIN_URL + '?next=' +
-                          self.PROFILE_URL)
-        self.assertEqual(self.browser.current_url, redirected_url)
+        self.assert_redirects_unauthorized(self.PROFILE_URL)
 
     def test_profile_fields_rendered(self):
         """
@@ -246,23 +259,102 @@ class ProfileTests(FirefoxAccountsTests):
         button.click()
         self.assertEqual(self.browser.current_url, expected_link)
 
-    def test_(self):
+    def test_profile_page_update_success(self):
         """
+        By submitting a form on profile page,
+        users are albe to update their info.
         """
-        # TODO
+
+        updated_user = {}
+        for field in self.get_profile_page_fields():
+            try:
+                updated_user[field] = self.user_for_tests[field] + '1'
+            except TypeError:
+                # date field
+                updated_user[field] = self.ARBITRARY_NEW_DATE
+
+        update_form = self.get_profile_update_form()
+        self.fill_submit_form_with_values(update_form, updated_user)
+        user = USER_MODEL.objects.get()
+        for field in self.user_without_password_fields():
+            field_value = getattr(user, field)
+            self.assertEqual(field_value, updated_user[field])
 
 
 class PasswordChangeTests(FirefoxAccountsTests):
 
-    """
-    Password change tests.
-    """
-    # TODO
+    def setUp(self):
+        super().setUp()
+        self.login_browser_user()
+        url = self.live_server_url + self.PASS_CHANGE_URL
+        self.browser.get(url)
+
+    def get_pass_change_form(self):
+        """
+        Return password change form element.
+        """
+        return self.browser.find_element_by_tag_name('form')
+
+    def test_pass_change_redirects_unauthorized(self):
+        """
+        Password change page is only accessible by authorized users.
+        """
+        self.assert_redirects_unauthorized(self.PASS_CHANGE_URL)
+
+    def test_profile_fields_rendered(self):
+        """
+        All expected fields are rendered.
+        """
+        self.verify_available_fields(self.get_password_change_dict().keys())
+
+    def test_change_password_success(self):
+        """
+        User's password is successfully updated.
+        """
+
+        user = USER_MODEL.objects.get()
+        self.assertFalse(user.check_password(self.NEW_PASSWORD))
+
+        new_password_form = self.get_password_change_dict()
+        pass_change_form = self.get_pass_change_form()
+        self.fill_submit_form_with_values(pass_change_form, new_password_form)
+
+        user = USER_MODEL.objects.get()
+        self.assertTrue(user.check_password(self.NEW_PASSWORD))
+
+    def test_changed_password_logged_in(self):
+        """
+        Changing the password doesn't log the user out.
+        """
+        self.assertTrue(self.browser.get_cookie('sessionid') is not None)
+
+        new_password_form = self.get_password_change_dict()
+        pass_change_form = self.get_pass_change_form()
+        self.fill_submit_form_with_values(pass_change_form, new_password_form)
+
+        self.assertTrue(self.browser.get_cookie('sessionid') is not None)
 
 
 class LogoutTests(FirefoxAccountsTests):
 
-    """
-    Logout tests.
-    """
-    # TODO
+    def test_logout_authorized_user(self):
+        """
+        Logout view logs out authorized users.
+        """
+
+        self.login_browser_user()
+        self.assertTrue(self.browser.get_cookie('sessionid') is not None)
+
+        url = self.live_server_url + self.LOGOUT_URL
+        self.browser.get(url)
+
+        self.assertTrue(self.browser.get_cookie('sessionid') is None)
+
+    def test_logout_anon_users_login(self):
+        """
+        Anonymous users accessing logout view are redirected to login page.
+        """
+        url = self.live_server_url + self.LOGOUT_URL
+        self.browser.get(url)
+        self.assertEqual(self.browser.current_url,
+                         self.live_server_url + self.LOGIN_URL)
