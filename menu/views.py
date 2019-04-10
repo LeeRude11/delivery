@@ -30,9 +30,6 @@ class MenuItemView(generic.DetailView):
 
 
 def update_cart(request, menuitem_id):
-    if request.user.is_authenticated is False:
-        messages.error(request, "Must be logged in.")
-        return HttpResponseRedirect(reverse('accounts:login'))
 
     menuitem = get_object_or_404(MenuItem, pk=menuitem_id)
     if request.method != 'POST':

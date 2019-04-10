@@ -1,131 +1,162 @@
 from django.test import TestCase
 from django.urls import reverse
+from django.contrib.auth import get_user_model
 
 from random import randint
+from datetime import datetime
 
 from .models import MenuItem
-from orders.tests import CustomTestCase
 
 
-DEF_NAME = 'New Dish'
-DEF_PRICE = 100
+def create_new_user():
+    # TODO get this func from accounts
+    """Create a new user for tests"""
+    User = get_user_model()
+    return User.objects.create_user(
+        phone_number='12345',
+        password='testpassword',
+        first_name='test first name',
+        second_name='test second name',
+        email='test@example.com',
+        date_of_birth=datetime.now(),
+        street='test street',
+        house='test house',
+        apartment='test apartment'
+    )
+
+
+class CustomTestCase(TestCase):
+
+    DEF_DISH = {
+        'name': 'New Dish',
+        'price': 100
+    }
+
+    def login_test_user(self):
+        """
+        Create and login a test user.
+        """
+        user = create_new_user()
+        self.client.login(username=user.phone_number, password='testpassword')
+
+    def add_menu_item(self):
+        """
+        Create a new menu item and return its id.
+        """
+        item_id = MenuItem.objects.create(**self.DEF_DISH).id
+        return item_id
+
+    def add_item_to_cart(self, item_id=None, amount=None):
+        """
+        Post provided or random amount of provided item
+        or the only available one.
+        Return response object and randomized amount.
+        """
+        if amount is None:
+            amount = randint(1, 10)
+        if item_id is None:
+            # TODO the only one or should make it the last one?
+            item_id = MenuItem.objects.get().id
+        url = reverse('menu:update_cart', args=(item_id,))
+        response = self.client.post(url, {'amount': amount}, follow=True)
+        return {
+            'response': response,
+            'amount': amount
+            }
+
+    def fill_session_cart(self):
+        expected_contents = []
+        for i in range(3):
+            new_menu_item = MenuItem.objects.create(
+                name=f'Dish{i}', price=randint(10, 300))
+            amount = self.add_item_to_cart(new_menu_item.id)['amount']
+            expected_contents.append({
+                'id': new_menu_item.id,
+                'name': new_menu_item.name,
+                'price': new_menu_item.price,
+                'amount': amount,
+                'cost': new_menu_item.price * amount
+            })
+        return expected_contents
 
 
 # Models tests
-class MenuItemModelTests(TestCase):
+class MenuItemModelTests(CustomTestCase):
 
     def test_item_created(self):
         """
         a MenuItem can be created and retrieved.
         """
-        dish = {
-            'name': DEF_NAME,
-            'price': DEF_PRICE
-        }
-        new_menu_item = MenuItem.objects.create(**dish)
-        self.assertEqual(new_menu_item, MenuItem.objects.get(id=1))
-        self.assertEqual(new_menu_item, MenuItem.objects.filter(
-            price=dish['price']).get(name=dish['name']))
-
-
-def create_menu_item(name=DEF_NAME, price=DEF_PRICE):
-    """
-    Create and return a menu item with given name and price.
-    """
-    new_menu_item = MenuItem.objects.create(name=name, price=price)
-    return new_menu_item
+        new_menu_item = MenuItem.objects.create(**self.DEF_DISH)
+        added_menu_item = MenuItem.objects.get()
+        self.assertEqual(new_menu_item, added_menu_item)
+        for field, value in self.DEF_DISH.items():
+            db_value = getattr(added_menu_item, field)
+            self.assertEqual(value, db_value)
 
 
 # Views tests
-class MenuListViewTests(TestCase):
+class MenuListViewTests(CustomTestCase):
 
     def test_empty_menu_list(self):
+        """
+        App without menu items shows an empty menu.
+        """
         response = self.client.get(reverse('menu:menu'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No items in menu")
         self.assertQuerysetEqual(response.context['object_list'], [])
 
     def test_menu_list_returned(self):
-        new_menu_item = create_menu_item()
+        """
+        A single item is shown.
+        """
+        new_menu_item = MenuItem.objects.create(**self.DEF_DISH)
         response = self.client.get(reverse('menu:menu'))
         self.assertEqual(response.status_code, 200)
         self.assertQuerysetEqual(response.context['object_list'],
                                  ['<MenuItem: ' + new_menu_item.name + '>'])
 
 
-class MenuCustomTestCase(CustomTestCase):
-
-    def login_user_add_item_return_url_and_id(self):
-        """
-        Login user, create a new menu item and return a tuple(
-        url with its id in args, id itself)
-        """
-        self.login_test_user()
-        new_menu_item = create_menu_item()
-        item_id = new_menu_item.id
-        return (reverse('menu:update_cart', args=(item_id,)), item_id)
-
-    def post_to_cart_redirect_return_response(self, url, amount=None):
-        """
-        Make POST request to cart, assertRedirect and return Response.
-        """
-        # TODO only one test calls this?
-        amount = amount or randint(1, 10)
-        response = self.client.post(url, {'amount': amount}, folow=True)
-        self.assertRedirects(response, reverse('menu:menu'))
-        return response
-
-
-class MenuItemViewTests(MenuCustomTestCase):
+class MenuItemViewTests(CustomTestCase):
 
     def test_view_context_current_amount(self):
         """
         MenuItemView context has current amount of the item in cart.
         """
-        add_url, menu_item_id = self.login_user_add_item_return_url_and_id()
-        amount = randint(1, 10)
-        self.client.post(add_url, {'amount': amount})
-        url = reverse('menu:detail', args=(menu_item_id,))
+        item_id = self.add_menu_item()
+
+        amount = self.add_item_to_cart()['amount']
+        url = reverse('menu:detail', args=(item_id,))
         response = self.client.get(url)
         self.assertEqual(response.context['current_amount'], amount)
 
 
-class MenuItemUpdateCartTests(MenuCustomTestCase):
-
-    def test_non_user_can_not_order(self):
-        """
-        TEMPORARY - non authorized users can not add items to cart
-        and redirected to login page.
-        """
-        new_menu_item = create_menu_item()
-        url = reverse('menu:update_cart', args=(new_menu_item.id,))
-
-        response = self.client.post(url, follow=True)
-        self.assertRedirects(response, reverse('accounts:login'))
-        message = list(response.context.get('messages'))[0]
-        self.assertEqual(message.tags, 'error')
-        self.assertTrue("Must be logged in." in message.message)
+class MenuItemUpdateCartTests(CustomTestCase):
 
     def test_update_cart_post_only(self):
         """
         Only accept POST requests.
         """
-        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+        item_id = self.add_menu_item()
+        url = reverse('menu:update_cart', args=(item_id,))
         response = self.client.get(url, follow=True)
         self.assertRedirects(response, reverse('menu:detail',
-                             args=(menu_item_id,)))
+                             args=(item_id,)))
 
     def test_add_item_to_cart(self):
         """
         Adding an item on its View adds it to user's session object.
         """
-        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+        item_id = self.add_menu_item()
 
-        amount = randint(1, 10)
-        self.post_to_cart_redirect_return_response(url, amount)
+        item_added = self.add_item_to_cart()
+        response, amount = item_added['response'], item_added['amount']
+        self.assertRedirects(response, reverse('menu:menu'))
+
         session = self.client.session
         expected_cart = {
-            f'{menu_item_id}': f'{amount}'
+            f'{item_id}': f'{amount}'
         }
         self.assertEqual(session['cart'], expected_cart)
 
@@ -134,13 +165,13 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         Trigger an error message if provided item amount was negative,
         or wasn't an integer.
         """
-        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+        item_id = self.add_menu_item()
 
         amounts = [-1, 1.5, 'Hello']
         for amount in amounts:
-            response = self.client.post(url, {'amount': amount}, follow=True)
+            response = self.add_item_to_cart(amount=amount)['response']
             self.assertRedirects(response, reverse('menu:detail',
-                                 args=(menu_item_id,)))
+                                 args=(item_id,)))
             message = list(response.context.get('messages'))[0]
             self.assertEqual(message.tags, 'error')
             self.assertTrue("Incorrect amount." in message.message)
@@ -151,15 +182,14 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         """
         Cart is successfully updated after removing some items.
         """
-        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+        item_id = self.add_menu_item()
 
-        amount = randint(6, 10)
-        self.client.post(url, {'amount': amount})
-        new_amount = randint(1, 5)
-        self.client.post(url, {'amount': new_amount})
+        self.add_item_to_cart(amount=randint(6, 10))
+        new_amount = self.add_item_to_cart(amount=randint(1, 5))['amount']
+
         session = self.client.session
         expected_cart = {
-            f'{menu_item_id}': f'{new_amount}'
+            f'{item_id}': f'{new_amount}'
         }
         self.assertEqual(session['cart'], expected_cart)
 
@@ -167,11 +197,10 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         """
         Item key is removed from cart if provided amount is 0.
         """
-        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+        self.add_menu_item()
 
-        amount = randint(1, 10)
-        self.client.post(url, {'amount': amount})
-        self.client.post(url, {'amount': 0})
+        self.add_item_to_cart()
+        self.add_item_to_cart(amount=0)
         session = self.client.session
         expected_cart = {}
         self.assertEqual(session['cart'], expected_cart)
@@ -180,11 +209,12 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         """
         Trigger an error message if amount of the item wasn't provided.
         """
-        url, menu_item_id = self.login_user_add_item_return_url_and_id()
+        item_id = self.add_menu_item()
+        url = reverse('menu:update_cart', args=(item_id,))
 
         response = self.client.post(url, follow=True)
         self.assertRedirects(response, reverse('menu:detail',
-                             args=(menu_item_id,)))
+                             args=(item_id,)))
         session = self.client.session
         message = list(response.context.get('messages'))[0]
 
@@ -196,7 +226,6 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         """
         Different items are successfully added to cart.
         """
-        self.login_test_user()
         expected_cart = {}
         for item in self.fill_session_cart():
             expected_cart[str(item['id'])] = str(item['amount'])
@@ -207,7 +236,6 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
         """
         Cart cost is correctly calculated.
         """
-        self.login_test_user()
         expected_cost = 0
         for item in self.fill_session_cart():
             expected_cost += item['price'] * item['amount']
@@ -217,18 +245,32 @@ class MenuItemUpdateCartTests(MenuCustomTestCase):
     def test_cart_cost_removes(self):
         """
         Cart cost is correcty updated after deleting item
-        and after decreasing its amount.
+        and after decreasing another item's amount.
         """
-        self.login_test_user()
         contents = self.fill_session_cart()
         old_cost = self.client.session['cart_cost']
-        expected_loss = contents[2]['price'] * contents[2]['amount']
-        expected_loss += contents[1]['price']
 
-        add_url = reverse('menu:update_cart', args=(contents[2]['id'],))
-        self.client.post(add_url, {'amount': 0})
-        add_url = reverse('menu:update_cart', args=(contents[1]['id'],))
-        self.client.post(add_url, {'amount': (contents[1]['amount'] - 1)})
+        item_to_remove = contents.pop(randint(0, len(contents) - 1))
+        item_to_decrease = contents.pop(randint(0, len(contents) - 1))
+        amount_to_decrease = randint(1, item_to_decrease['amount'])
+
+        expected_loss = (item_to_remove['price'] * item_to_remove['amount'] +
+                         item_to_decrease['price'] * amount_to_decrease)
+
+        self.add_item_to_cart(item_id=item_to_remove['id'], amount=0)
+        self.add_item_to_cart(
+            item_id=item_to_decrease['id'],
+            amount=(item_to_decrease['amount'] - amount_to_decrease))
 
         new_cost = self.client.session['cart_cost']
         self.assertEqual(old_cost - expected_loss, new_cost)
+
+
+class MenuItemUpdateCartTestsLoggedIn(MenuItemUpdateCartTests):
+    """
+    Rerun those tests but with a logged in user.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.login_test_user()

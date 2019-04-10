@@ -7,6 +7,7 @@ from random import randint
 from menu.models import MenuItem
 # TODO common operations? reusable apps?
 from orders.tests import create_new_user
+from time import sleep
 
 
 class FirefoxTests(StaticLiveServerTestCase):
@@ -88,50 +89,33 @@ class MenuDetailTests(FirefoxTests):
         self.assertEqual(name_header.text, test_item.name)
         self.assertIn(str(test_item.price), price_header.text)
 
-    def test_detail_page_has_current_amount(self):
-        """
-        Detail page form contains current amount of the item in cart.
-        """
-        self.login_browser_user()
-
-        new_menu_item = MenuItem.objects.create(
-            name=f'Dish{randint(1, 10)}', price=randint(10, 300))
-        add_url = reverse('menu:update_cart', args=(new_menu_item.id,))
-        amount = randint(1, 10)
-        self.client.post(add_url, {'amount': amount})
-        url = self.live_server_url + reverse(
-            'menu:detail', args=(new_menu_item.id,))
-
-        self.browser.get(url)
-        amount_form = self.browser.find_element_by_id(
-            'amount')
-
-        self.assertEqual(
-            int(amount_form.get_property('value')),
-            amount
-        )
-
     def test_amount_accepted_and_updates(self):
         """
         Providing value in amount form updates current amount.
         """
-        self.login_browser_user()
+        # self.login_browser_user()
 
         new_menu_item = MenuItem.objects.create(
             name=f'Dish{randint(1, 10)}', price=randint(10, 300))
 
         url = self.live_server_url + reverse(
             'menu:detail', args=(new_menu_item.id,))
-        amount = randint(1, 10)
 
         self.browser.get(url)
         amount_form = self.browser.find_element_by_id(
             'amount')
 
+        self.assertEqual(
+            int(amount_form.get_property('value')),
+            0
+        )
+
+        amount = randint(1, 10)
         amount_form.clear()
         amount_form.send_keys(amount)
         amount_form.submit()
 
+        sleep(0.5)
         self.browser.get(url)
         amount_form = self.browser.find_element_by_id(
             'amount')
@@ -139,3 +123,12 @@ class MenuDetailTests(FirefoxTests):
             int(amount_form.get_property('value')),
             amount
         )
+
+
+class MenuDetailTestsLoggedIn(MenuDetailTests):
+    """
+    Rerun those tests but with a logged in user.
+    """
+    def setUp(self):
+        super().setUp()
+        self.login_browser_user()
