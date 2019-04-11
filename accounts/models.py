@@ -6,16 +6,19 @@ import re
 class CustomUserManager(BaseUserManager):
 
     def _create_user(
-            self, phone_number, password,
+            self, phone_number,
             first_name, second_name,
-            street, house, apartment='',
-            email=None, date_of_birth=None, is_admin=False
+            street, house, apartment='', password=None,
+            email=None, date_of_birth=None, is_admin=False, is_guest=False
             ):
 
         if not phone_number:
             # TODO calling create_user allows to bypass all required fields,
             # if not checked this way
             raise ValueError('Users must have a phone number')
+
+        if password is None and is_guest is False:
+            raise ValueError('Registering users must have a password')
 
         user = self.model(
             phone_number=re.sub('\D', '', phone_number),
@@ -26,7 +29,8 @@ class CustomUserManager(BaseUserManager):
             apartment=apartment,
             email=self.normalize_email(email),
             date_of_birth=date_of_birth,
-            is_admin=is_admin
+            is_admin=is_admin,
+            is_guest=is_guest
         )
 
         user.set_password(password)
@@ -45,8 +49,8 @@ class CustomUserManager(BaseUserManager):
         """
 
         return self._create_user(
-            phone_number, password, first_name, second_name, street,
-            house, apartment, email, date_of_birth
+            phone_number, first_name, second_name, street,
+            house, apartment, password, email, date_of_birth
         )
 
     def create_superuser(
@@ -61,8 +65,28 @@ class CustomUserManager(BaseUserManager):
         """
         # TODO superuser-s might need an email
         return self._create_user(
-            phone_number, password, first_name, second_name, street,
-            house, apartment, email, date_of_birth, True
+            phone_number, first_name, second_name, street,
+            house, apartment, password, email, date_of_birth, True
+        )
+
+    def create_guest_user(
+            self, phone_number,
+            first_name, second_name,
+            street, house, apartment=''
+            ):
+        """
+        Creates and saves a guest user with the given phone number, password,
+        full address and optional email and date of birth.
+        """
+        return self._create_user(
+            phone_number=phone_number,
+            first_name=first_name,
+            second_name=second_name,
+            street=street,
+            house=house,
+            apartment=apartment,
+            is_admin=False,
+            is_guest=True
         )
 
 
@@ -99,6 +123,7 @@ class User(AbstractBaseUser):
         null=True
     )
     is_active = models.BooleanField(default=True)
+    is_guest = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
 
     objects = CustomUserManager()

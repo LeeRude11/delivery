@@ -28,6 +28,13 @@ class AccountsTestConstants(object):
         'date_of_birth',
         'apartment'
     ]
+    guest_user_fields = [
+        'phone_number',
+        'first_name',
+        'second_name',
+        'street',
+        'house',
+    ]
     user_for_tests = {
         'phone_number': '12345',
         'password1': 'testpassword',
@@ -105,18 +112,47 @@ class UserModelTests(TestCase, AccountsTestConstants):
         """
         User is created using create_user()
         """
+        user_dict = self.user_for_create_user()
         new_user = USER_MODEL.objects.create_user(
-            **self.user_for_create_user())
+            **user_dict)
         self.assertEqual(new_user, USER_MODEL.objects.get())
+        self.assertTrue(new_user.check_password(user_dict.pop('password')))
+        self.assert_single_user_fields(user_dict)
 
     def test_superuser_created(self):
         """
         Superuser is created using create_superuser()
         """
-        new_superuser = USER_MODEL.objects.create_superuser(
-            *("1" for i in range(6)))
+        user_dict = self.user_for_create_user()
+        new_superuser = USER_MODEL.objects.create_superuser(**user_dict)
         self.assertEqual(new_superuser, USER_MODEL.objects.get())
         self.assertTrue(USER_MODEL.objects.get().is_admin)
+        self.assertTrue(
+            new_superuser.check_password(user_dict.pop('password')))
+        self.assert_single_user_fields(user_dict)
+
+    def test_guest_user_created(self):
+        """
+        Guest user is created using create_guest_user()
+        which doesn't require password.
+        """
+        guest_user_dict = {
+            k: self.user_for_tests[k] for k in self.guest_user_fields}
+        new_guest_user = USER_MODEL.objects.create_guest_user(
+            **guest_user_dict)
+        self.assertEqual(new_guest_user, USER_MODEL.objects.get())
+        self.assertTrue(USER_MODEL.objects.get().is_guest)
+
+    def test_user_superuser_require_password(self):
+        """
+        Unlike guest user, user and superuser require password.
+        """
+        user = self.user_for_create_user()
+        user['password'] = None
+        with self.assertRaises(ValueError):
+            USER_MODEL.objects.create_user(**user)
+        with self.assertRaises(ValueError):
+            USER_MODEL.objects.create_superuser(**user)
 
 
 class AccountsTestCase(TestCase, AccountsTestConstants):
