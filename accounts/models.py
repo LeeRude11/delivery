@@ -17,8 +17,27 @@ class CustomUserManager(BaseUserManager):
             # if not checked this way
             raise ValueError('Users must have a phone number')
 
-        if password is None and is_guest is False:
-            raise ValueError('Registering users must have a password')
+        if is_guest is False:
+            """
+            Phone number and email are unique for registered users.
+            """
+            # TODO a method to return only non-guests?
+            registered_users = self.model.objects.filter(is_guest=False)
+            if password is None:
+                raise ValueError('Registering users must have a password')
+            if email is not None:
+                try:
+                    registered_users.get(email=email)
+                except self.model.DoesNotExist:
+                    pass
+                else:
+                    raise ValueError('This email is already registered')
+            try:
+                registered_users.get(phone_number=phone_number)
+            except self.model.DoesNotExist:
+                pass
+            else:
+                raise ValueError('This phone number is already registered')
 
         user = self.model(
             phone_number=re.sub('\D', '', phone_number),
@@ -72,7 +91,7 @@ class CustomUserManager(BaseUserManager):
     def create_guest_user(
             self, phone_number,
             first_name, second_name,
-            street, house, apartment=''
+            street, house, apartment='', email=None
             ):
         """
         Creates and saves a guest user with the given phone number, password,
@@ -85,6 +104,7 @@ class CustomUserManager(BaseUserManager):
             street=street,
             house=house,
             apartment=apartment,
+            email=email,
             is_admin=False,
             is_guest=True
         )
@@ -94,7 +114,6 @@ class User(AbstractBaseUser):
     # TODO max length etc.
     phone_number = models.CharField(
         max_length=64,
-        unique=True
     )
     first_name = models.CharField(max_length=64)
     second_name = models.CharField(max_length=64)
@@ -114,7 +133,6 @@ class User(AbstractBaseUser):
     email = models.EmailField(
         verbose_name='email address',
         max_length=255,
-        unique=True,
         blank=True,
         null=True
     )
