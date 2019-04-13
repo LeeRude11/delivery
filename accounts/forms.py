@@ -36,6 +36,20 @@ class CustomUserForm(forms.ModelForm):
         phone_number = self.cleaned_data.get("phone_number")
         return re.sub('\D', '', phone_number)
 
+    def clean(self):
+        """
+        Phone number and email are unique for registered users.
+        """
+        cd = self.cleaned_data
+        registered_users = User.objects.filter(is_guest=False)
+        if cd['email'] is not None and len(
+                registered_users.filter(email=cd['email'])) != 0:
+            self.add_error('email', "This email is already registered")
+        if len(registered_users.filter(phone_number=cd['phone_number'])) != 0:
+            self.add_error(
+                'phone_number', "This phone number is already registered")
+        return cd
+
 
 class UserCreationForm(CustomUserForm):
     """A form for creating new users. Includes all the required
