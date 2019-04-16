@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from datetime import date
 from django.contrib import auth
+from django.db import utils, transaction
 
 EMAIL = 'test@example.com'
 USER_MODEL = get_user_model()
@@ -34,6 +35,8 @@ class AccountsTestConstants(object):
         'second_name',
         'street',
         'house',
+        'apartment',
+        'email',
     ]
     user_for_tests = {
         'phone_number': '12345',
@@ -65,6 +68,9 @@ class AccountsTestConstants(object):
         user = self.user_without_password_fields()
         user['password'] = self.user_for_tests['password1']
         return user
+
+    def guest_user_for_create_guest_user(self):
+        return {k: self.user_for_tests[k] for k in self.guest_user_fields}
 
     def login_form_dict(self):
         """
@@ -105,6 +111,21 @@ class AccountsTestConstants(object):
             'new_password2': self.NEW_PASSWORD
         }
 
+    def assert_db_integrity_error(self, user_dict):
+        """
+        Assert IntegrityError in an atomic transaction.
+        """
+        # with self.assertRaises(utils.IntegrityError):
+        # TODO ValueError are raised in _create_user now
+        with self.assertRaises(ValueError):
+            with transaction.atomic():
+                USER_MODEL.objects.create_user(**user_dict)
+
+    def create_test_guest_user(self):
+        guest_user_dict = self.guest_user_for_create_guest_user()
+        return USER_MODEL.objects.create_guest_user(
+            **guest_user_dict)
+
 
 class UserModelTests(TestCase, AccountsTestConstants):
 
@@ -136,10 +157,7 @@ class UserModelTests(TestCase, AccountsTestConstants):
         Guest user is created using create_guest_user()
         which doesn't require password.
         """
-        guest_user_dict = {
-            k: self.user_for_tests[k] for k in self.guest_user_fields}
-        new_guest_user = USER_MODEL.objects.create_guest_user(
-            **guest_user_dict)
+        new_guest_user = self.create_test_guest_user()
         self.assertEqual(new_guest_user, USER_MODEL.objects.get())
         self.assertTrue(USER_MODEL.objects.get().is_guest)
 
@@ -154,6 +172,73 @@ class UserModelTests(TestCase, AccountsTestConstants):
         with self.assertRaises(ValueError):
             USER_MODEL.objects.create_superuser(**user)
 
+    def test_user_not_allowed_duplicate_number_email(self):
+        """
+        Users are not allowed to have a phone_number or an email
+        which are already registered.
+        """
+        user_dict = self.user_for_create_user()
+        USER_MODEL.objects.create_user(**user_dict)
+
+        self.assert_db_integrity_error(user_dict)
+
+        orig_email = user_dict['email']
+        user_dict['email'] = "1" + user_dict['email']
+        self.assert_db_integrity_error(user_dict)
+
+        user_dict['email'] = orig_email
+        user_dict['phone_number'] = "1" + user_dict['phone_number']
+        self.assert_db_integrity_error(user_dict)
+
+        user_dict['email'] = "1" + user_dict['email']
+        try:
+            USER_MODEL.objects.create_user(**user_dict)
+        except (utils.IntegrityError, ValueError):
+            raise AssertionError
+
+    def test_user_duplicate_guest_number_email(self):
+        """
+        Users are allowed to have
+        a phone number and an email which were already used by other guest.
+        """
+        self.create_test_guest_user()
+
+        user_dict = self.user_for_create_user()
+        try:
+            USER_MODEL.objects.create_user(**user_dict)
+        except (utils.IntegrityError, ValueError):
+            raise AssertionError
+
+        users = USER_MODEL.objects.all()
+        self.assertEqual(users[0].phone_number, users[1].phone_number)
+        self.assertEqual(users[0].email, users[1].email)
+
+    def test_guest_user_duplicate_registered_number_email(self):
+        """
+        Guest users are allowed to have
+        a phone number and an email which were already registered.
+        """
+        user_dict = self.user_for_create_user()
+        USER_MODEL.objects.create_user(**user_dict)
+
+        try:
+            self.create_test_guest_user()
+        except (utils.IntegrityError, ValueError):
+            raise AssertionError
+
+        users = USER_MODEL.objects.all()
+        self.assertEqual(users[0].phone_number, users[1].phone_number)
+        self.assertEqual(users[0].email, users[1].email)
+
+    def test_guest_user_duplicate_guest_number_email(self):
+        """
+        Guest users are allowed to have
+        a phone number and an email which were already used by other guest.
+        """
+        first_guest_user = self.create_test_guest_user()
+        second_guest_user = self.create_test_guest_user()
+        self.assertNotEqual(first_guest_user, second_guest_user)
+
 
 class AccountsTestCase(TestCase, AccountsTestConstants):
 
@@ -161,11 +246,11 @@ class AccountsTestCase(TestCase, AccountsTestConstants):
     Methods for tests.
     """
 
-    def register_user(self):
+    def register_user(self, user=None):
         """
         POST a register form.
         """
-        user = self.user_for_tests.copy()
+        user = user or self.user_for_tests.copy()
         url = reverse('accounts:register')
         self.client.post(url, user, follow=True)
 
@@ -285,6 +370,20 @@ class RegisterViewTests(AccountsTestCase):
         self.no_error_msgs(response)
 
         self.assertEqual(len(USER_MODEL.objects.all()), 2)
+
+    def test_phone_email_guest_used(self):
+        """
+        Allow to register if phone or email were previously used by guest.
+        """
+        self.create_test_guest_user()
+        user = self.user_for_tests.copy()
+        url = reverse('accounts:register')
+        self.client.post(url, user, follow=True)
+
+        users = USER_MODEL.objects.all()
+        self.assertEqual(users[0].phone_number, users[1].phone_number)
+        self.assertEqual(users[0].email, users[1].email)
+        self.assertNotEqual(users[0].is_guest, users[1].is_guest)
 
     def test_register_success_logs_in(self):
         """
@@ -420,6 +519,21 @@ class LoginViewTests(AccountsTestCase):
         self.assertTrue(
             error_message in dict(response.context['form'].errors)['__all__'])
 
+    def test_guests_can_not_login(self):
+        """
+        You can't log in with guest's credentials.
+        """
+        self.create_test_guest_user()
+        url = reverse('accounts:login')
+        form_to_post = {
+            'username': self.user_for_tests['email'],
+            'password': self.user_for_tests['password1']
+        }
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertNotEqual(response.context['form'].errors, {})
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_anonymous)
+
 
 class ProfileViewTests(AccountsTestCase):
 
@@ -494,6 +608,51 @@ class ProfileViewTests(AccountsTestCase):
         form_fields_w_values = response.context['form'].initial
         for k, v in form_fields_w_values.items():
             self.assertEqual(v, updated_user[k])
+
+    def test_same_unique_profile_update(self):
+        """
+        Passing your own phone number and email doesn't raise errors.
+        """
+        self.register_user()
+        url = reverse('accounts:profile')
+        response = self.client.post(url, self.user_for_tests, follow=True)
+        self.assertEqual(0, len(response.context['form'].errors))
+
+    def test_profile_update_duplicate_phone_email(self):
+        """
+        Don't allow users to change their phone number or email
+        to an already registered one.
+        """
+        self.register_user()
+
+        second_user = self.user_for_tests.copy()
+        second_phone = f"0{second_user['phone_number']}"
+        second_user['phone_number'] = second_phone
+        second_user['email'] = f"another{second_user['email']}"
+        self.register_user(second_user)
+        users = USER_MODEL.objects.all()
+
+        url = reverse('accounts:profile')
+        second_user['phone_number'] = self.user_for_tests['phone_number']
+        response = self.client.post(url, second_user, follow=True)
+
+        self.assertTrue('phone_number' in response.context['form'].errors)
+        self.assertNotEqual(users[0].phone_number, users[1].phone_number)
+
+        second_user['email'] = self.user_for_tests['email']
+        response = self.client.post(url, second_user, follow=True)
+
+        self.assertTrue('email' in response.context['form'].errors)
+        self.assertTrue('phone_number' in response.context['form'].errors)
+        self.assertNotEqual(users[0].email, users[1].email)
+        self.assertNotEqual(users[0].phone_number, users[1].phone_number)
+
+        second_user['phone_number'] = second_phone
+        response = self.client.post(url, second_user, follow=True)
+
+        self.assertTrue('email' in response.context['form'].errors)
+        self.assertTrue('phone_number' not in response.context['form'].errors)
+        self.assertNotEqual(users[0].email, users[1].email)
 
 
 class PasswordChangeViewTests(AccountsTestCase):
