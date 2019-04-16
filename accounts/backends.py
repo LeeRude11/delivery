@@ -7,13 +7,14 @@ class AuthPhoneOrEmailBackend(ModelBackend):
 
     """
     Authenticate a user who provided either a phone number
-    or an email address.
+    or an email address while ingoring guests.
     """
     def authenticate(self, request, username=None, password=None):
         user_model = get_user_model()
         try:
             user = user_model.objects.get(
-                Q(phone_number=username) | Q(email=username)
+                (Q(phone_number=username) | Q(email=username))
+                & Q(is_guest=False)
             )
         except user_model.DoesNotExist:
             return None
