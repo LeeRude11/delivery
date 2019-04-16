@@ -26,14 +26,14 @@ class CustomUserForm(forms.ModelForm):
 
     def clean_email(self):
         # store email in lowercase
-        email = self.cleaned_data.get("email")
+        email = self.cleaned_data.get('email')
         if email:
             email = email.lower()
         return email
 
     def clean_phone_number(self):
         # store only digits of phone numbers
-        phone_number = self.cleaned_data.get("phone_number")
+        phone_number = self.cleaned_data.get('phone_number')
         return re.sub('\D', '', phone_number)
 
     def clean(self):
@@ -42,10 +42,10 @@ class CustomUserForm(forms.ModelForm):
         """
         cd = self.cleaned_data
         registered_users = User.objects.filter(is_guest=False)
-        if cd['email'] is not None and len(
-                registered_users.filter(email=cd['email'])) != 0:
+        if (cd['email'] is not None and
+                registered_users.filter(email=cd['email']).exists()):
             self.add_error('email', "This email is already registered")
-        if len(registered_users.filter(phone_number=cd['phone_number'])) != 0:
+        if registered_users.filter(phone_number=cd['phone_number']).exists():
             self.add_error(
                 'phone_number', "This phone number is already registered")
         return cd
@@ -110,7 +110,25 @@ class UserChangeForm(forms.ModelForm):
 class UserUpdateForm(CustomUserForm):
     """A form presented to users for updating their personal information.
     """
-    pass
+    def clean(self):
+        """
+        Phone number and email are unique for registered users.
+        """
+        # TODO very close to CustomUserForm.clean() but not quite
+        cd = self.cleaned_data
+        user = self.instance
+
+        registered_users = User.objects.filter(is_guest=False)
+        if (cd['email'] is not None and
+            registered_users.filter(email=cd['email']).exists() and
+                user != registered_users.get(email=cd['email'])):
+            self.add_error('email', "This email is already registered")
+        if (registered_users.filter(phone_number=cd['phone_number']).exists()
+                and user != registered_users.get(
+                phone_number=cd['phone_number'])):
+            self.add_error(
+                'phone_number', "This phone number is already registered")
+        return cd
 
 
 class CustomAuthForm(AuthenticationForm):
