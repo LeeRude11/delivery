@@ -25,18 +25,10 @@ class CustomUserManager(BaseUserManager):
             registered_users = self.model.objects.filter(is_guest=False)
             if password is None:
                 raise ValueError('Registering users must have a password')
-            if email is not None:
-                try:
-                    registered_users.get(email=email)
-                except self.model.DoesNotExist:
-                    pass
-                else:
-                    raise ValueError('This email is already registered')
-            try:
-                registered_users.get(phone_number=phone_number)
-            except self.model.DoesNotExist:
-                pass
-            else:
+            if (email is not None and
+                    registered_users.filter(email=email).exists()):
+                raise ValueError('This email is already registered')
+            if registered_users.filter(phone_number=phone_number).exists():
                 raise ValueError('This phone number is already registered')
 
         user = self.model(
