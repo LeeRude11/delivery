@@ -4,19 +4,44 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from random import randint
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from .models import OrderInfo, OrderContents
 from menu.models import MenuItem
 
+# TODO TestCase from menu app should have create_menu_item and stuff
 DEF_NAME = 'New Dish'
 DEF_PRICE = 100
 ORDERS_UPDATE = 'orders:orders_update_cart'
 SHOP_CART_PAGE = 'orders/shopping_cart.html'
 EMAIL = 'test@example.com'
 
+CHECKOUT_FIELDS = [
+    'phone_number',
+    'first_name',
+    'second_name',
+    'email',
+    'street',
+    'house',
+    'apartment'
+]
+
+user_for_tests = {
+        'phone_number': '12345',
+        'password1': 'testpassword',
+        'password2': 'testpassword',
+        'first_name': 'test first name',
+        'second_name': 'test second name',
+        'email': EMAIL,
+        'date_of_birth': date(1980, 1, 1),
+        'street': 'test street',
+        'house': 'test house',
+        'apartment': 'test apartment'
+    }
+
 
 def create_new_user():
+    # TODO get this func from accounts
     """Create a new user for tests"""
     User = get_user_model()
     return User.objects.create_user(
@@ -108,6 +133,8 @@ class CustomTestCase(TestCase):
         """
         Create and login a test user.
         """
+        # TODO - bring from accounts
+        # TODO - rerun test with this in SetUp and without by default
         user = create_new_user()
         self.client.login(username=user.phone_number, password='testpassword')
 
@@ -278,6 +305,32 @@ class CheckoutViewTests(CustomTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'orders/checkout.html')
+
+    def test_checkout_renders_form(self):
+        """
+        Checkout page renders a form with user info.
+        """
+        self.fill_session_cart()
+        url = reverse('orders:checkout')
+        response = self.client.get(url)
+        rendered_fields = list(response.context['form'].fields.keys())
+        for field in CHECKOUT_FIELDS:
+            rendered_fields.remove(field)
+        self.assertEqual(len(rendered_fields), 0)
+
+    def test_checkout_form_prefilled(self):
+        """
+        With a logged-in user, checkout form is prefilled with their info.
+        """
+        self.login_test_user()
+        self.fill_session_cart()
+        url = reverse('orders:checkout')
+        response = self.client.get(url)
+        form_fields_w_values = response.context['form'].initial
+        self.assertEqual(len(form_fields_w_values.items()),
+                         len(CHECKOUT_FIELDS))
+        for k, v in form_fields_w_values.items():
+            self.assertEqual(v, user_for_tests[k])
 
 
 class ProcessOrderViewTests(CustomTestCase):
