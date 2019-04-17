@@ -42,10 +42,11 @@ class CustomUserForm(forms.ModelForm):
         """
         cd = self.cleaned_data
         registered_users = User.objects.filter(is_guest=False)
-        if (cd['email'] is not None and
+        if (cd.get('email') is not None and
                 registered_users.filter(email=cd['email']).exists()):
             self.add_error('email', "This email is already registered")
-        if registered_users.filter(phone_number=cd['phone_number']).exists():
+        if (cd.get('phone_number') is not None and registered_users.filter(
+                phone_number=cd['phone_number']).exists()):
             self.add_error(
                 'phone_number', "This phone number is already registered")
         return cd
@@ -110,24 +111,21 @@ class UserChangeForm(forms.ModelForm):
 class UserUpdateForm(CustomUserForm):
     """A form presented to users for updating their personal information.
     """
+
     def clean(self):
         """
-        Phone number and email are unique for registered users.
+        Don't pass not updated email and phone number to super().clean.
         """
-        # TODO very close to CustomUserForm.clean() but not quite
         cd = self.cleaned_data
         user = self.instance
+        not_changed = {}
+        unique_fields = ['email', 'phone_number']
 
-        registered_users = User.objects.filter(is_guest=False)
-        if (cd['email'] is not None and
-            registered_users.filter(email=cd['email']).exists() and
-                user != registered_users.get(email=cd['email'])):
-            self.add_error('email', "This email is already registered")
-        if (registered_users.filter(phone_number=cd['phone_number']).exists()
-                and user != registered_users.get(
-                phone_number=cd['phone_number'])):
-            self.add_error(
-                'phone_number', "This phone number is already registered")
+        for field in unique_fields:
+            if getattr(user, field) == cd.get(field):
+                not_changed[field] = cd.pop(field)
+        super().clean()
+        cd.update(not_changed)
         return cd
 
 
