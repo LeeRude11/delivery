@@ -281,20 +281,18 @@ class RegisterViewTests(AccountsTestCase):
         """
         url = reverse('accounts:register')
         form_to_post = {}
-        self.assertEqual(len(USER_MODEL.objects.all()), 0)
-        for i, field in enumerate(self.required_fields):
-            form_to_post[field] = self.user_for_tests[field]
+        self.assertFalse(USER_MODEL.objects.all().exists())
+        for field in self.required_fields:
             response = self.client.post(url, form_to_post, follow=True)
-            try:
-                self.assertFalse(field in response.context['form'].errors)
-                next_field = self.required_fields[i+1]
-            except (IndexError, KeyError):
-                # TODO KeyError as no form in /profile redirected to
-                # all required fields are filled and user is registered
-                self.assertEqual(len(USER_MODEL.objects.all()), 1)
-            else:
-                self.assertContains(response, "This field is required")
-                self.assertTrue(next_field in response.context['form'].errors)
+
+            self.assertTrue(field in response.context['form'].errors)
+            self.assertContains(response, "This field is required")
+            self.assertFalse(USER_MODEL.objects.all().exists())
+
+            form_to_post[field] = self.user_for_tests[field]
+
+        response = self.client.post(url, form_to_post, follow=True)
+        self.assertTrue(USER_MODEL.objects.all().exists())
 
     def test_register_unrequired(self):
         """
@@ -523,7 +521,9 @@ class LoginViewTests(AccountsTestCase):
         """
         You can't log in with guest's credentials.
         """
-        self.create_test_guest_user()
+        guest_user = self.create_test_guest_user()
+        self.assertFalse(guest_user.has_usable_password())
+
         url = reverse('accounts:login')
         form_to_post = {
             'username': self.user_for_tests['email'],
@@ -608,6 +608,29 @@ class ProfileViewTests(AccountsTestCase):
         form_fields_w_values = response.context['form'].initial
         for k, v in form_fields_w_values.items():
             self.assertEqual(v, updated_user[k])
+
+    def test_profile_update_empty(self):
+        """
+        Can not update profile with empty values in required fields.
+        """
+        self.register_user()
+        url = reverse('accounts:profile')
+
+        form_to_post = {}
+        profile_fields = self.user_without_password_fields()
+        for field in self.unrequired_fields:
+            profile_fields.pop(field)
+
+        for field in profile_fields:
+            response = self.client.post(url, form_to_post, follow=True)
+
+            self.assertTrue(field in response.context['form'].errors)
+            self.assertContains(response, "This field is required")
+
+            form_to_post[field] = self.user_for_tests[field]
+
+        response = self.client.post(url, form_to_post, follow=True)
+        self.no_error_msgs(response)
 
     def test_same_unique_profile_update(self):
         """
