@@ -21,7 +21,6 @@ class CustomUserManager(BaseUserManager):
             """
             Phone number and email are unique for registered users.
             """
-            # TODO a method to return only non-guests?
             registered_users = self.model.objects.filter(is_guest=False)
             if password is None:
                 raise ValueError('Registering users must have a password')
