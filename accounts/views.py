@@ -1,6 +1,5 @@
-from django.views.generic import base, edit
+from django.views.generic import edit
 from django.contrib import auth
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy
 from django.contrib.auth import login, authenticate
@@ -8,17 +7,6 @@ from django.shortcuts import render, redirect
 
 from .forms import UserCreationForm, UserUpdateForm, CustomAuthForm
 SUCCESS_REG_REDIRECT = 'accounts:profile'
-
-
-class ProfileView(LoginRequiredMixin, base.TemplateView):
-    template_name = 'registration/profile.html'
-
-    def get_context_data(self, **kwargs):
-        # TODO a lot more information
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
-        context['username'] = user.get_short_name()
-        return context
 
 
 @login_required
