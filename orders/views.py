@@ -6,19 +6,17 @@ from django.contrib import messages
 from .models import OrderInfo, OrderContents
 from menu.models import MenuItem
 from menu.views import update_cart
+from accounts.forms import CustomOrderForm
 
 
 def shopping_cart(request):
-    if request.user.is_authenticated is False:
-        messages.error(request, "Must be logged in.")
-        return HttpResponseRedirect(reverse('accounts:login'))
     template_name = 'orders/shopping_cart.html'
     cart_contents = build_cart_contents(request.session.get('cart', {}))
     return render(request, template_name, cart_contents)
 
 
 def orders_update_cart(request, menuitem_id):
-    # TODO reusable app, separated units?
+    # TODO reusable app, separated units? MenuItem model is also used
     update_cart(request, menuitem_id)
     return HttpResponseRedirect(reverse('orders:shopping_cart'))
 
@@ -31,36 +29,41 @@ def remove_item(request, menuitem_id):
 
 
 def checkout(request):
-    # TODO retrieve user info and fill forms
     # TODO there also will be a register option for anons
     cart = request.session.get('cart', {})
     if len(cart) == 0:
         messages.error(request, "Your cart is empty.")
         return HttpResponseRedirect(reverse('orders:shopping_cart'))
-    return render(request, 'orders/checkout.html')
 
-
-def process_order(request):
-    # TODO receive more info in POST
-    if request.user.is_authenticated is False:
-        messages.error(request, "Must be logged in.")
-        return HttpResponseRedirect(reverse('accounts:login'))
+    if request.user.is_authenticated:
+        instance = request.user
+    else:
+        instance = None
 
     if request.method == 'POST':
-        cart = request.session.get('cart', {})
-        if len(cart) == 0:
-            messages.error(request, "Your cart is empty.")
-            return HttpResponseRedirect(reverse('orders:shopping_cart'))
-        write_order_to_db(request.user, cart)
+        form = CustomOrderForm(request.POST, instance=instance)
 
-        request.session['cart'].clear()
-        request.session['cart_cost'] = 0
-        request.session.modified = True
+        if form.is_valid():
+            user = form.save()
+            if request.user.is_anonymous:
+                # don't register a guest user
+                user.set_unusable_password()
+                user.is_guest = True
+                user.save()
 
-        return render(request, 'orders/success.html')
-
+            write_order_to_db(user, cart)
+            flush_cart(request.session)
+            return render(request, 'orders/success.html')
     else:
-        return HttpResponseRedirect(reverse('orders:shopping_cart'))
+        form = CustomOrderForm(instance=instance)
+
+    return render(request, 'orders/checkout.html', {'form': form})
+
+
+def flush_cart(session):
+    session['cart'].clear()
+    session['cart_cost'] = 0
+    session.modified = True
 
 
 def build_cart_contents(cart_dict):
