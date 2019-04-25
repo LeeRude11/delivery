@@ -146,3 +146,25 @@ class CustomAuthForm(AuthenticationForm):
             return username.strip().lower()
         else:
             return re.sub('\D', '', username)
+
+
+class CustomOrderForm(CustomUserForm):
+    """A form specifying fields required for making an order.
+    """
+    class Meta:
+        model = User
+        fields = (
+            'phone_number',
+            'first_name',
+            'second_name',
+            'email',
+            'street',
+            'house',
+            'apartment'
+        )
+
+    def clean(self):
+        """
+        Overwrite custom clean method.
+        """
+        return self.cleaned_data
