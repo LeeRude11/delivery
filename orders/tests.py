@@ -16,6 +16,8 @@ ORDERS_UPDATE = 'orders:orders_update_cart'
 SHOP_CART_PAGE = 'orders/shopping_cart.html'
 EMAIL = 'test@example.com'
 
+USER_MODEL = get_user_model()
+
 CHECKOUT_FIELDS = [
     'phone_number',
     'first_name',
@@ -38,6 +40,13 @@ user_for_tests = {
         'house': 'test house',
         'apartment': 'test apartment'
     }
+
+
+def build_checkout_form():
+    form = {}
+    for field in CHECKOUT_FIELDS:
+        form[field] = user_for_tests[field]
+    return form
 
 
 def create_new_user():
@@ -111,24 +120,6 @@ class OrderInfoTests(TestCase):
 
 class CustomTestCase(TestCase):
 
-    def assert_redirect_and_error_msg(
-            self, viewname, redirect_to='accounts:login', get=True,
-            msg_text="Must be logged in."):
-        """
-        Page redirects and shows an error message.
-        Default is for a users-only page.
-        Only accepts GET and POST requests
-        """
-        url = reverse(viewname)
-        if get:
-            response = self.client.get(url, follow=True)
-        else:
-            response = self.client.post(url, follow=True)
-        self.assertRedirects(response, reverse(redirect_to))
-        message = list(response.context.get('messages'))[0]
-        self.assertEqual(message.tags, 'error')
-        self.assertTrue(msg_text in message.message)
-
     def login_test_user(self):
         """
         Create and login a test user.
@@ -164,12 +155,6 @@ class CustomTestCase(TestCase):
 
 
 class ShoppingCartViewTests(CustomTestCase):
-
-    def test_shopping_cart_redirects_anon_to_login(self):
-        """
-        TEMPORARY - unauthorized users can not access shopping cart page.
-        """
-        self.assert_redirect_and_error_msg(viewname='orders:shopping_cart')
 
     def test_shopping_cart_is_empty(self):
         """
@@ -282,107 +267,119 @@ class RemoveItemViewTests(CustomTestCase):
         self.assertEqual(response.context['contents'], expected_contents)
 
 
-class CheckoutViewTests(CustomTestCase):
+class CheckoutSetUp(CustomTestCase):
 
-    def test_can_not_access_checkout_with_empty_cart(self):
-        """
-        Trying to access checkout with an empty cart
-        redirects to shopping cart page.
-        """
-        self.login_test_user()
+    def setUp(self):
+        super().setUp()
+        self.url = reverse('orders:checkout')
 
-        self.assert_redirect_and_error_msg(
-            'orders:checkout', redirect_to='orders:shopping_cart',
-            get=False, msg_text="Your cart is empty.")
 
-    def test_can_access_checkout(self):
-        """
-        Users with non-empty cart can access checkout page.
-        """
-        self.login_test_user()
-        self.fill_session_cart()
-        url = reverse('orders:checkout')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'orders/checkout.html')
+class CheckoutViewSpecificTests(CheckoutSetUp):
 
-    def test_checkout_renders_form(self):
-        """
-        Checkout page renders a form with user info.
-        """
-        self.fill_session_cart()
-        url = reverse('orders:checkout')
-        response = self.client.get(url)
-        rendered_fields = list(response.context['form'].fields.keys())
-        for field in CHECKOUT_FIELDS:
-            rendered_fields.remove(field)
-        self.assertEqual(len(rendered_fields), 0)
-
+    """
+    Tests that are only run as guest or user.
+    """
     def test_checkout_form_prefilled(self):
         """
         With a logged-in user, checkout form is prefilled with their info.
         """
         self.login_test_user()
         self.fill_session_cart()
-        url = reverse('orders:checkout')
-        response = self.client.get(url)
+        response = self.client.get(self.url)
         form_fields_w_values = response.context['form'].initial
         self.assertEqual(len(form_fields_w_values.items()),
                          len(CHECKOUT_FIELDS))
         for k, v in form_fields_w_values.items():
             self.assertEqual(v, user_for_tests[k])
 
-
-class ProcessOrderViewTests(CustomTestCase):
-
-    def test_process_order_redirects_anon(self):
+    def test_user_info_updated(self):
         """
-        TEMPORARY - Process order redirects unauthorized users to login.
-        """
-        self.assert_redirect_and_error_msg(viewname='orders:process_order')
-
-    def test_process_order_redirects_get(self):
-        """
-        Process order is only available with POST.
-        """
-        url = self.user_access_url('orders:process_order')
-        response = self.client.get(url, follow=True)
-        self.assertRedirects(response, reverse('orders:shopping_cart'))
-
-    def test_process_empty_cart(self):
-        """
-        Trying to order an empty cart will redirect with error message.
+        If user provides info different from prefilled, his info is updated.
         """
         self.login_test_user()
+        self.fill_session_cart()
+        response = self.client.get(self.url)
+        form_fields_w_values = response.context['form'].initial
+        for field in form_fields_w_values:
+            form_fields_w_values[field] += "1"
 
-        self.assert_redirect_and_error_msg(
-            'orders:process_order', redirect_to='orders:shopping_cart',
-            get=False, msg_text="Your cart is empty.")
+        self.client.post(self.url, form_fields_w_values, follow=True)
+        user = USER_MODEL.objects.get()
+        for field, value in form_fields_w_values.items():
+            user_value = getattr(user, field)
+            self.assertEqual(user_value, value)
+
+    def test_guest_user_created(self):
+        """
+        When anonymous user posts an order,
+        a corresponding guest user is created.
+        """
+        self.assertFalse(USER_MODEL.objects.all().exists())
+        self.fill_session_cart()
+        self.client.post(self.url, build_checkout_form())
+        self.assertTrue(USER_MODEL.objects.get().is_guest)
+
+
+class CheckoutViewTests(CheckoutSetUp):
+
+    """
+    General tests, which are first run as guest.
+    """
+    def setUp(self):
+        super().setUp()
+        self.checkout_form = build_checkout_form()
+
+    def test_can_not_access_checkout_with_empty_cart(self):
+        """
+        Trying to access checkout page whether via GET or POST request
+        with an empty cart redirects to shopping cart page.
+        """
+        responses = [self.client.post(self.url, follow=True),
+                     self.client.get(self.url, follow=True)]
+
+        for response in responses:
+            self.assertRedirects(response, reverse('orders:shopping_cart'))
+            message = list(response.context.get('messages'))[0]
+            self.assertEqual(message.tags, 'error')
+            self.assertTrue("Your cart is empty." in message.message)
+
+    def test_can_access_checkout(self):
+        """
+        Users with non-empty cart can access checkout page.
+        """
+        self.fill_session_cart()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'orders/checkout.html')
+
+    def test_checkout_renders_form(self):
+        """
+        Checkout page renders a form with expected fields.
+        """
+        self.fill_session_cart()
+        response = self.client.get(self.url)
+        rendered_fields = list(response.context['form'].fields.keys())
+        for field in CHECKOUT_FIELDS:
+            rendered_fields.remove(field)
+        self.assertEqual(len(rendered_fields), 0)
 
     def test_process_order(self):
         """
-        Order is successfully transefrered from Session to database.
+        Order is successfully transferred from Session to database.
         """
-        url = self.user_access_url('orders:process_order')
-
         expected_contents = self.fill_session_cart()
 
-        response = self.client.post(url)
+        response = self.client.post(self.url, self.checkout_form)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your order was placed.")
-        # cart and cart_cost are flushed
-        session = self.client.session
-        self.assertEqual(session['cart'], {})
-        self.assertEqual(session['cart_cost'], 0)
 
-        placed_order = OrderInfo.objects.get(pk=1)
+        placed_order = OrderInfo.objects.get()
         order_contents = placed_order.ordercontents_set.all()
         # arbitrary 5 seconds to account for some fault
         self.assertTrue(
             timezone.now() - placed_order.ordered < timedelta(seconds=5))
         self.assertEqual(len(expected_contents), len(order_contents))
         for expected in expected_contents:
-            # .get also raises exception if more or less than 1 match found
             db_contents = order_contents.get(menu_item__id=expected['id'])
             dict_from_db = {
                 'id': db_contents.menu_item.id,
@@ -392,3 +389,38 @@ class ProcessOrderViewTests(CustomTestCase):
                 'cost': db_contents.cost,
             }
             self.assertEqual(expected, dict_from_db)
+
+    def test_cart_flushed(self):
+        """
+        On successful order, Session cart is emptied.
+        """
+        self.fill_session_cart()
+
+        session = self.client.session
+        self.assertNotEqual(session['cart'], {})
+        self.assertNotEqual(session['cart_cost'], 0)
+
+        self.client.post(self.url, self.checkout_form)
+
+        session = self.client.session
+        self.assertEqual(session['cart'], {})
+        self.assertEqual(session['cart_cost'], 0)
+
+    def test_order_by_user(self):
+        """
+        Order is associated with a user or guest that posted it.
+        """
+        self.fill_session_cart()
+        self.client.post(self.url, self.checkout_form)
+        self.assertEqual(OrderInfo.objects.get().user,
+                         USER_MODEL.objects.get())
+
+
+class CheckoutViewLoggedTests(CheckoutViewTests):
+
+    """
+    Rerun with a logged in user.
+    """
+    def setUp(self):
+        super().setUp()
+        self.login_test_user()

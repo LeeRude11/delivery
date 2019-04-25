@@ -1,15 +1,20 @@
 from django.urls import reverse
 
 from random import randint
-
-from menu.models import MenuItem
-from menu.tests_selenium import FirefoxTests
 from time import sleep
 
+from menu.models import MenuItem
+from .models import OrderInfo
+from accounts.tests_selenium import FirefoxAccountsTests
+from .tests import build_checkout_form
 
-class OrdersFirefoxTests(FirefoxTests):
+
+class OrdersFirefoxTests(FirefoxAccountsTests):
+
+    CHECKOUT_URL = reverse('orders:checkout')
 
     def fill_session_cart(self):
+        # TODO - only works with a logged in user
         expected_contents = []
         for i in range(3):
             new_menu_item = MenuItem.objects.create(
@@ -98,19 +103,59 @@ class ShoppingCartTests(OrdersFirefoxTests):
 
 class CheckoutTests(OrdersFirefoxTests):
 
+    def setUp(self):
+        super().setUp()
+        self.login_browser_user()
+        self.fill_session_cart()
+        url = self.live_server_url + self.CHECKOUT_URL
+        self.browser.get(url)
+
+    def get_checkout_form(self):
+        """
+        Return checkout form element.
+        """
+        return self.browser.find_element_by_tag_name('form')
+
+    def test_checkout_fields(self):
+        """
+        All expected fields are rendered.
+        """
+
+        checkout_fields = build_checkout_form().keys()
+
+        self.verify_available_fields(checkout_fields)
+
+    def test_checkout_fields_prefilled(self):
+        """
+        Checkout form is prefilled with user info if logged in.
+        """
+        checkout_fields = build_checkout_form()
+        for name, value in checkout_fields.items():
+            # django fields ids are formatted "id=id_{field_name}"
+            field_id = 'id_' + name
+            field = self.browser.find_element_by_id(field_id)
+            self.assertEqual(
+                field.get_attribute('value'), str(value)
+            )
+
     def test_process_order(self):
         """
         Clicking on the button processes order.
         """
-        self.login_browser_user()
-        self.fill_session_cart()
-        url = self.live_server_url + reverse('orders:checkout')
-        self.browser.get(url)
-        self.browser.find_element_by_id('nothing').submit()
-        sleep(1)
+        checkout_form = self.get_checkout_form()
+        checkout_form.submit()
+
+        sleep(0.5)
         div = self.browser.find_element_by_tag_name('div')
         self.assertIn(
             "Your order was placed.",
             div.text
         )
         self.assertTrue(len(self.client.session['cart']) == 0)
+        OrderInfo.objects.get()
+
+    def not_test_without_user(self):
+        """
+        Maybe rerun without users
+        """
+        # TODO
