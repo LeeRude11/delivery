@@ -10,5 +10,4 @@ urlpatterns = [
     path('<int:menuitem_id>/remove_item', views.remove_item,
          name='remove_item'),
     path('checkout/', views.checkout, name='checkout'),
-    path('process_order/', views.process_order, name='process_order')
 ]
