@@ -4,92 +4,29 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from random import randint
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 
 from .models import OrderInfo, OrderContents
-from menu.models import MenuItem
 
-# TODO TestCase from menu app should have create_menu_item and stuff
-DEF_NAME = 'New Dish'
-DEF_PRICE = 100
-ORDERS_UPDATE = 'orders:orders_update_cart'
-SHOP_CART_PAGE = 'orders/shopping_cart.html'
-EMAIL = 'test@example.com'
+from menu.models import MenuItem
+from menu.tests import MenuTestConstants
+from accounts.tests import AccountsTestConstants
 
 USER_MODEL = get_user_model()
 
-CHECKOUT_FIELDS = [
-    'phone_number',
-    'first_name',
-    'second_name',
-    'email',
-    'street',
-    'house',
-    'apartment'
-]
 
-user_for_tests = {
-        'phone_number': '12345',
-        'password1': 'testpassword',
-        'password2': 'testpassword',
-        'first_name': 'test first name',
-        'second_name': 'test second name',
-        'email': EMAIL,
-        'date_of_birth': date(1980, 1, 1),
-        'street': 'test street',
-        'house': 'test house',
-        'apartment': 'test apartment'
-    }
-
-
-def build_checkout_form():
-    form = {}
-    for field in CHECKOUT_FIELDS:
-        form[field] = user_for_tests[field]
-    return form
-
-
-def create_new_user():
-    # TODO get this func from accounts
-    """Create a new user for tests"""
-    User = get_user_model()
-    return User.objects.create_user(
-        phone_number='12345',
-        password='testpassword',
-        first_name='test first name',
-        second_name='test second name',
-        email=EMAIL,
-        date_of_birth=datetime.now(),
-        street='test street',
-        house='test house',
-        apartment='test apartment'
-    )
-
-
-def create_menu_item(name=DEF_NAME, price=DEF_PRICE):
-    """
-    Create and return a menu item with given name and price.
-    """
-    new_menu_item = MenuItem.objects.create(name=name, price=price)
-    return new_menu_item
-
-
-def create_new_user_and_return_his_order():
-    return OrderInfo.objects.create(user=create_new_user())
-
-
-class OrderInfoTests(TestCase):
+class OrderInfoTests(AccountsTestConstants, TestCase):
 
     def test_order_from_user(self):
         """Order is associated with user"""
-        new_user = create_new_user()
+        new_user = self.create_test_user()
         new_order = OrderInfo.objects.create(user=new_user)
         self.assertEqual(new_order.user, new_user)
 
     def test_order_cost_function(self):
         """OrderContents.cost is correctly added in total cost"""
         cost = 0
-        order = create_new_user_and_return_his_order()
+        order = OrderInfo.objects.create(user=self.create_test_user())
         for i in range(3):
             price = randint(1, 500)
             amount = randint(1, 10)
@@ -101,7 +38,7 @@ class OrderInfoTests(TestCase):
 
     def test_order_update_status_function(self):
         """Status is correctly updated"""
-        order = create_new_user_and_return_his_order()
+        order = OrderInfo.objects.create(user=self.create_test_user())
         self.assertIsInstance(order.ordered, datetime)
         self.assertIsNone(order.cooked)
         self.assertIsNone(order.delivered)
@@ -118,50 +55,23 @@ class OrderInfoTests(TestCase):
 """View tests."""
 
 
-class CustomTestCase(TestCase):
+class OrdersTestCase(AccountsTestConstants, MenuTestConstants, TestCase):
 
-    def login_test_user(self):
-        """
-        Create and login a test user.
-        """
-        # TODO - bring from accounts
-        # TODO - rerun test with this in SetUp and without by default
-        user = create_new_user()
-        self.client.login(username=user.phone_number, password='testpassword')
-
-    def user_access_url(self, viewname):
-        """
-        Create and login a test user, then access passed viewname.
-        """
-        self.login_test_user()
-        return reverse(viewname)
-
-    def fill_session_cart(self):
-        expected_contents = []
-        for i in range(3):
-            new_menu_item = create_menu_item(
-                name=f'Dish{i}', price=randint(10, 300))
-            add_url = reverse('menu:update_cart', args=(new_menu_item.id,))
-            amount = randint(1, 10)
-            self.client.post(add_url, {'amount': amount})
-            expected_contents.append({
-                'id': new_menu_item.id,
-                'name': new_menu_item.name,
-                'price': new_menu_item.price,
-                'amount': amount,
-                'cost': new_menu_item.price * amount
-            })
-        return expected_contents
+    # TODO - rerun test with login_test_user in SetUp and without by default
+    SHOP_CART_URL = reverse('orders:shopping_cart')
+    ORDERS_UPDATE = 'orders:orders_update_cart'
+    SHOP_CART_PAGE = 'orders/shopping_cart.html'
 
 
-class ShoppingCartViewTests(CustomTestCase):
+class ShoppingCartViewTests(OrdersTestCase):
+
+    URL = OrdersTestCase.SHOP_CART_URL
 
     def test_shopping_cart_is_empty(self):
         """
         Opening page with empty cart displays appropriate text.
         """
-        url = self.user_access_url('orders:shopping_cart')
-        response = self.client.get(url)
+        response = self.client.get(self.URL)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your shopping cart is empty.")
         self.assertQuerysetEqual(response.context['contents'], [])
@@ -170,61 +80,53 @@ class ShoppingCartViewTests(CustomTestCase):
         """
         Page has user's cart contents.
         """
-        url = self.user_access_url('orders:shopping_cart')
-
         expected_contents = self.fill_session_cart()
-        response = self.client.get(url)
+        response = self.client.get(self.URL)
         self.assertEqual(response.context['contents'], expected_contents)
 
     def test_shopping_cart_displays_total_cost(self):
         """
         Whole cart cost is correctly calculated and displayed.
         """
-        url = self.user_access_url('orders:shopping_cart')
-
         expected_cart_cost = 0
         for item in self.fill_session_cart():
             expected_cart_cost += item['price'] * item['amount']
 
-        self.client.get(url)
+        self.client.get(self.URL)
         self.assertEqual(self.client.session['cart_cost'], expected_cart_cost)
 
 
-class UpdateCartViewTests(CustomTestCase):
+class UpdateCartViewTests(OrdersTestCase):
 
     def test_update_shopping_cart(self):
         """
         Change amount of items from shopping cart page.
         """
-        url = self.user_access_url('orders:shopping_cart')
-
         expected_contents = self.fill_session_cart()
         for item in expected_contents:
-            update_url = reverse(ORDERS_UPDATE, args=(item['id'],))
+            update_url = reverse(self.ORDERS_UPDATE, args=(item['id'],))
             new_amount = randint(1, 10)
             self.client.post(update_url, {'amount': new_amount})
             item['amount'] = new_amount
             item['cost'] = new_amount * item['price']
 
-        response = self.client.get(url)
+        response = self.client.get(self.SHOP_CART_URL)
         self.assertEqual(response.context['contents'], expected_contents)
 
     def test_remove_item_from_cart(self):
         """
         Setting amount to 0 removes item from cart page.
         """
-        url = self.user_access_url('orders:shopping_cart')
-
         expected_contents = self.fill_session_cart()
         index = randint(0, 2)
         update_url = reverse(
-            ORDERS_UPDATE, args=(expected_contents[index]['id'],))
+            self.ORDERS_UPDATE, args=(expected_contents[index]['id'],))
         new_amount = 0
         self.client.post(update_url, {'amount': new_amount})
 
         expected_contents.pop(index)
 
-        response = self.client.get(url)
+        response = self.client.get(self.SHOP_CART_URL)
         self.assertEqual(response.context['contents'], expected_contents)
 
     def test_update_order_menu_errors(self):
@@ -232,9 +134,8 @@ class UpdateCartViewTests(CustomTestCase):
         Error messages are sent from menu.views.update_cart,
         and returned page is orders.shopping_page.
         """
-        self.login_test_user()
         item = self.fill_session_cart()[0]
-        update_url = reverse(ORDERS_UPDATE, args=(item['id'],))
+        update_url = reverse(self.ORDERS_UPDATE, args=(item['id'],))
         new_amount = -1
         response = self.client.post(update_url, {'amount': new_amount},
                                     follow=True)
@@ -244,17 +145,16 @@ class UpdateCartViewTests(CustomTestCase):
         self.assertTrue("Incorrect amount." in message.message)
         self.assertFalse(self.client.session.modified)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, SHOP_CART_PAGE)
+        # TODO template, eh?
+        self.assertTemplateUsed(response, self.SHOP_CART_PAGE)
 
 
-class RemoveItemViewTests(CustomTestCase):
+class RemoveItemViewTests(OrdersTestCase):
 
     def test_remove_item(self):
         """
         View removes item from cart.
         """
-        url = self.user_access_url('orders:shopping_cart')
-
         expected_contents = self.fill_session_cart()
         index = randint(0, 2)
         update_url = reverse(
@@ -263,18 +163,47 @@ class RemoveItemViewTests(CustomTestCase):
 
         expected_contents.pop(index)
 
-        response = self.client.get(url)
+        response = self.client.get(self.SHOP_CART_URL)
         self.assertEqual(response.context['contents'], expected_contents)
 
 
-class CheckoutSetUp(CustomTestCase):
-
+class LoggedInTests(ShoppingCartViewTests,
+                    UpdateCartViewTests, RemoveItemViewTests):
+    """
+    Rerun those suites with a logged in users.
+    """
+    # TODO - unite with Checkout logged in? Only URL is a problem
     def setUp(self):
         super().setUp()
-        self.url = reverse('orders:checkout')
+        self.login_test_user()
 
 
-class CheckoutViewSpecificTests(CheckoutSetUp):
+class CheckoutConstants(object):
+
+    CHECKOUT_FIELDS = [
+        'phone_number',
+        'first_name',
+        'second_name',
+        'email',
+        'street',
+        'house',
+        'apartment'
+    ]
+    URL = reverse('orders:checkout')
+
+    def build_checkout_form(self):
+        return {
+            field: self.user_for_tests[field] for field in self.CHECKOUT_FIELDS
+        }
+
+
+class CheckoutTestCase(CheckoutConstants, OrdersTestCase):
+    """
+    Pack two classes for two test suites.
+    """
+
+
+class CheckoutViewSpecificTests(CheckoutTestCase):
 
     """
     Tests that are only run as guest or user.
@@ -285,12 +214,12 @@ class CheckoutViewSpecificTests(CheckoutSetUp):
         """
         self.login_test_user()
         self.fill_session_cart()
-        response = self.client.get(self.url)
+        response = self.client.get(self.URL)
         form_fields_w_values = response.context['form'].initial
         self.assertEqual(len(form_fields_w_values.items()),
-                         len(CHECKOUT_FIELDS))
+                         len(self.CHECKOUT_FIELDS))
         for k, v in form_fields_w_values.items():
-            self.assertEqual(v, user_for_tests[k])
+            self.assertEqual(v, self.user_for_tests[k])
 
     def test_user_info_updated(self):
         """
@@ -298,12 +227,12 @@ class CheckoutViewSpecificTests(CheckoutSetUp):
         """
         self.login_test_user()
         self.fill_session_cart()
-        response = self.client.get(self.url)
+        response = self.client.get(self.URL)
         form_fields_w_values = response.context['form'].initial
         for field in form_fields_w_values:
             form_fields_w_values[field] += "1"
 
-        self.client.post(self.url, form_fields_w_values, follow=True)
+        self.client.post(self.URL, form_fields_w_values, follow=True)
         user = USER_MODEL.objects.get()
         for field, value in form_fields_w_values.items():
             user_value = getattr(user, field)
@@ -316,26 +245,22 @@ class CheckoutViewSpecificTests(CheckoutSetUp):
         """
         self.assertFalse(USER_MODEL.objects.all().exists())
         self.fill_session_cart()
-        self.client.post(self.url, build_checkout_form())
+        self.client.post(self.URL, self.build_checkout_form())
         self.assertTrue(USER_MODEL.objects.get().is_guest)
 
 
-class CheckoutViewTests(CheckoutSetUp):
+class CheckoutViewTests(CheckoutTestCase):
 
     """
     General tests, which are first run as guest.
     """
-    def setUp(self):
-        super().setUp()
-        self.checkout_form = build_checkout_form()
-
     def test_can_not_access_checkout_with_empty_cart(self):
         """
         Trying to access checkout page whether via GET or POST request
         with an empty cart redirects to shopping cart page.
         """
-        responses = [self.client.post(self.url, follow=True),
-                     self.client.get(self.url, follow=True)]
+        responses = [self.client.post(self.URL, follow=True),
+                     self.client.get(self.URL, follow=True)]
 
         for response in responses:
             self.assertRedirects(response, reverse('orders:shopping_cart'))
@@ -348,7 +273,7 @@ class CheckoutViewTests(CheckoutSetUp):
         Users with non-empty cart can access checkout page.
         """
         self.fill_session_cart()
-        response = self.client.get(self.url)
+        response = self.client.get(self.URL)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'orders/checkout.html')
 
@@ -357,9 +282,9 @@ class CheckoutViewTests(CheckoutSetUp):
         Checkout page renders a form with expected fields.
         """
         self.fill_session_cart()
-        response = self.client.get(self.url)
+        response = self.client.get(self.URL)
         rendered_fields = list(response.context['form'].fields.keys())
-        for field in CHECKOUT_FIELDS:
+        for field in self.CHECKOUT_FIELDS:
             rendered_fields.remove(field)
         self.assertEqual(len(rendered_fields), 0)
 
@@ -369,7 +294,7 @@ class CheckoutViewTests(CheckoutSetUp):
         """
         expected_contents = self.fill_session_cart()
 
-        response = self.client.post(self.url, self.checkout_form)
+        response = self.client.post(self.URL, self.build_checkout_form())
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Your order was placed.")
 
@@ -400,7 +325,7 @@ class CheckoutViewTests(CheckoutSetUp):
         self.assertNotEqual(session['cart'], {})
         self.assertNotEqual(session['cart_cost'], 0)
 
-        self.client.post(self.url, self.checkout_form)
+        self.client.post(self.URL, self.build_checkout_form())
 
         session = self.client.session
         self.assertEqual(session['cart'], {})
@@ -411,7 +336,7 @@ class CheckoutViewTests(CheckoutSetUp):
         Order is associated with a user or guest that posted it.
         """
         self.fill_session_cart()
-        self.client.post(self.url, self.checkout_form)
+        self.client.post(self.URL, self.build_checkout_form())
         self.assertEqual(OrderInfo.objects.get().user,
                          USER_MODEL.objects.get())
 

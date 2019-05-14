@@ -36,8 +36,7 @@ class FirefoxAccountsTests(StaticLiveServerTestCase, AccountsTestConstants):
         Create and login a test user.
         """
         # https://stackoverflow.com/a/22497239
-        user = self.create_new_user()
-        self.client.login(username=user.phone_number, password='testpassword')
+        self.login_test_user()
         cookie = self.client.cookies['sessionid']
         self.browser.get(self.live_server_url + '/admin/')
         self.browser.add_cookie({

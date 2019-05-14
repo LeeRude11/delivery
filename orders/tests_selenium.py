@@ -1,35 +1,17 @@
 from django.urls import reverse
 
-from random import randint
 from time import sleep
 
-from menu.models import MenuItem
 from .models import OrderInfo
+from .tests import CheckoutConstants
+# TODO from accounts?
 from accounts.tests_selenium import FirefoxAccountsTests
-from .tests import build_checkout_form
+from menu.tests import MenuTestConstants
 
 
-class OrdersFirefoxTests(FirefoxAccountsTests):
+class OrdersFirefoxTests(MenuTestConstants, FirefoxAccountsTests):
 
     CHECKOUT_URL = reverse('orders:checkout')
-
-    def fill_session_cart(self):
-        # TODO - only works with a logged in user
-        expected_contents = []
-        for i in range(3):
-            new_menu_item = MenuItem.objects.create(
-                name=f'Dish{i}', price=randint(10, 300))
-            add_url = reverse('menu:update_cart', args=(new_menu_item.id,))
-            amount = randint(1, 10)
-            self.client.post(add_url, {'amount': amount})
-            expected_contents.append({
-                'id': new_menu_item.id,
-                'name': new_menu_item.name,
-                'price': new_menu_item.price,
-                'amount': amount,
-                'cost': new_menu_item.price * amount
-            })
-        return expected_contents
 
 
 class ShoppingCartTests(OrdersFirefoxTests):
@@ -72,13 +54,13 @@ class ShoppingCartTests(OrdersFirefoxTests):
             self.browser.find_element_by_id('food_cost').text
         )
 
-    def test_update_shopping_cart(self):
+    def not_test_update_shopping_cart(self):
         """
         Amount of items in cart can be changed.
         """
         # TODO
 
-    def test_remove_item_from_cart(self):
+    def not_test_remove_item_from_cart(self):
         """
         Items in cart can be removed.
         """
@@ -101,7 +83,7 @@ class ShoppingCartTests(OrdersFirefoxTests):
         )
 
 
-class CheckoutTests(OrdersFirefoxTests):
+class CheckoutTests(CheckoutConstants, OrdersFirefoxTests):
 
     def setUp(self):
         super().setUp()
@@ -121,7 +103,7 @@ class CheckoutTests(OrdersFirefoxTests):
         All expected fields are rendered.
         """
 
-        checkout_fields = build_checkout_form().keys()
+        checkout_fields = self.build_checkout_form().keys()
 
         self.verify_available_fields(checkout_fields)
 
@@ -129,7 +111,7 @@ class CheckoutTests(OrdersFirefoxTests):
         """
         Checkout form is prefilled with user info if logged in.
         """
-        checkout_fields = build_checkout_form()
+        checkout_fields = self.build_checkout_form()
         for name, value in checkout_fields.items():
             # django fields ids are formatted "id=id_{field_name}"
             field_id = 'id_' + name

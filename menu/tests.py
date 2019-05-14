@@ -1,43 +1,38 @@
 from django.test import TestCase
 from django.urls import reverse
-from django.contrib.auth import get_user_model
 
 from random import randint
-from datetime import datetime
 
 from .models import MenuItem
+from accounts.tests import AccountsTestConstants
 
 
-def create_new_user():
-    # TODO get this func from accounts
-    """Create a new user for tests"""
-    User = get_user_model()
-    return User.objects.create_user(
-        phone_number='12345',
-        password='testpassword',
-        first_name='test first name',
-        second_name='test second name',
-        email='test@example.com',
-        date_of_birth=datetime.now(),
-        street='test street',
-        house='test house',
-        apartment='test apartment'
-    )
-
-
-class CustomTestCase(TestCase):
+class MenuTestConstants(object):
 
     DEF_DISH = {
         'name': 'New Dish',
         'price': 100
     }
 
-    def login_test_user(self):
-        """
-        Create and login a test user.
-        """
-        user = create_new_user()
-        self.client.login(username=user.phone_number, password='testpassword')
+    def fill_session_cart(self):
+        expected_contents = []
+        for i in range(3):
+            new_menu_item = MenuItem.objects.create(
+                name=f'Dish{i}', price=randint(10, 300))
+            add_url = reverse('menu:update_cart', args=(new_menu_item.id,))
+            amount = randint(1, 10)
+            self.client.post(add_url, {'amount': amount})
+            expected_contents.append({
+                'id': new_menu_item.id,
+                'name': new_menu_item.name,
+                'price': new_menu_item.price,
+                'amount': amount,
+                'cost': new_menu_item.price * amount
+            })
+        return expected_contents
+
+
+class CustomTestCase(AccountsTestConstants, MenuTestConstants, TestCase):
 
     def add_menu_item(self):
         """
@@ -48,8 +43,8 @@ class CustomTestCase(TestCase):
 
     def add_item_to_cart(self, item_id=None, amount=None):
         """
-        Post provided or random amount of provided item
-        or the only available one.
+        Post [provided | random] amount of
+        [provided | the only available one] item.
         Return response object and randomized amount.
         """
         if amount is None:
@@ -63,21 +58,6 @@ class CustomTestCase(TestCase):
             'response': response,
             'amount': amount
             }
-
-    def fill_session_cart(self):
-        expected_contents = []
-        for i in range(3):
-            new_menu_item = MenuItem.objects.create(
-                name=f'Dish{i}', price=randint(10, 300))
-            amount = self.add_item_to_cart(new_menu_item.id)['amount']
-            expected_contents.append({
-                'id': new_menu_item.id,
-                'name': new_menu_item.name,
-                'price': new_menu_item.price,
-                'amount': amount,
-                'cost': new_menu_item.price * amount
-            })
-        return expected_contents
 
 
 # Models tests

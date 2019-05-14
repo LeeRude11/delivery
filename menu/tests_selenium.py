@@ -4,13 +4,12 @@ from django.urls import reverse
 
 from random import randint
 
-from menu.models import MenuItem
-# TODO common operations? reusable apps?
-from orders.tests import create_new_user
+from .models import MenuItem
+from accounts.tests import AccountsTestConstants
 from time import sleep
 
 
-class FirefoxTests(StaticLiveServerTestCase):
+class FirefoxTests(AccountsTestConstants, StaticLiveServerTestCase):
 
     def setUp(self):
         self.browser = webdriver.Firefox()
@@ -23,8 +22,7 @@ class FirefoxTests(StaticLiveServerTestCase):
         Create and login a test user.
         """
         # https://stackoverflow.com/a/22497239
-        user = create_new_user()
-        self.client.login(username=user.phone_number, password='testpassword')
+        self.login_test_user()
         cookie = self.client.cookies['sessionid']
         self.browser.get(self.live_server_url + '/admin/')
         self.browser.add_cookie({
