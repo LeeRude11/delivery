@@ -106,6 +106,9 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTH_USER_MODEL = 'accounts.User'
 AUTHENTICATION_BACKENDS = ('accounts.backends.AuthPhoneOrEmailBackend',)
 
+# non-unique usernames are handled in accounts app
+SILENCED_SYSTEM_CHECKS = ["auth.W004"]
+
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
 
