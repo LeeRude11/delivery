@@ -1,39 +1,13 @@
-from selenium import webdriver
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.urls import reverse
 
 from random import randint
 
 from .models import MenuItem
-from accounts.tests import AccountsTestConstants
+from delivery.tests_selenium import DeliveryFirefoxTests
 from time import sleep
 
 
-class FirefoxTests(AccountsTestConstants, StaticLiveServerTestCase):
-
-    def setUp(self):
-        self.browser = webdriver.Firefox()
-
-    def tearDown(self):
-        self.browser.close()
-
-    def login_browser_user(self):
-        """
-        Create and login a test user.
-        """
-        # https://stackoverflow.com/a/22497239
-        self.login_test_user()
-        cookie = self.client.cookies['sessionid']
-        self.browser.get(self.live_server_url + '/admin/')
-        self.browser.add_cookie({
-            'name': 'sessionid',
-            'value': cookie.value,
-            'secure': False,
-            'path': '/'
-        })
-
-
-class MenuListTests(FirefoxTests):
+class MenuListTests(DeliveryFirefoxTests):
 
     def test_no_items_in_menu(self):
         """
@@ -68,7 +42,7 @@ class MenuListTests(FirefoxTests):
             )
 
 
-class MenuDetailTests(FirefoxTests):
+class MenuDetailTests(DeliveryFirefoxTests):
 
     def test_detail_page_has_name_price(self):
         """
@@ -127,6 +101,7 @@ class MenuDetailTestsLoggedIn(MenuDetailTests):
     """
     Rerun those tests but with a logged in user.
     """
+
     def setUp(self):
         super().setUp()
         self.login_browser_user()

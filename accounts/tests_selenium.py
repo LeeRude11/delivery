@@ -1,75 +1,18 @@
-# from menu.tests_selenium import FirefoxTests
-# TODO common operations? reusable apps?
-from selenium import webdriver
-from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
-from .tests import AccountsTestConstants
-from time import sleep
+from delivery.tests_selenium import DeliveryFirefoxTests
 
 USER_MODEL = get_user_model()
 
 
-class FirefoxAccountsTests(StaticLiveServerTestCase, AccountsTestConstants):
+class FirefoxAccountsTests(DeliveryFirefoxTests):
 
     LOGIN_URL = reverse('accounts:login')
     LOGOUT_URL = reverse('accounts:logout')
     REGISTER_URL = reverse('accounts:register')
     PROFILE_URL = reverse('accounts:profile')
     PASS_CHANGE_URL = reverse('accounts:password_change')
-
-    def create_new_user(self):
-        """Create a new user for tests"""
-        return USER_MODEL.objects.create_user(
-            **self.user_for_create_user()
-        )
-
-    def setUp(self):
-        self.browser = webdriver.Firefox()
-
-    def tearDown(self):
-        self.browser.close()
-
-    def login_browser_user(self):
-        """
-        Create and login a test user.
-        """
-        # https://stackoverflow.com/a/22497239
-        self.login_test_user()
-        cookie = self.client.cookies['sessionid']
-        self.browser.get(self.live_server_url + '/admin/')
-        self.browser.add_cookie({
-            'name': 'sessionid',
-            'value': cookie.value,
-            'secure': False,
-            'path': '/'
-        })
-
-    def verify_available_fields(self, ids_list):
-        """
-        With a list of passed elements,
-        verify that corresponding input elements are present on the page.
-        """
-        for field_name in ids_list:
-            # django fields ids are formatted "id=id_{field_name}"
-            field_id = 'id_' + field_name
-            self.assertEqual(
-                len(self.browser.find_elements_by_id(field_id)), 1
-            )
-
-    def fill_submit_form_with_values(self, form, values):
-        """
-        Fill a passed form with values from a dictionary,
-        finding fields using its keys, and submit it.
-        """
-        for key, value in values.items():
-            field = form.find_element_by_id('id_' + key)
-            field.clear()
-            # TODO can't pass datetime as is
-            field.send_keys(str(value))
-        form.submit()
-        sleep(0.5)
 
     def assert_redirects_unauthorized(self, target_url):
         """
@@ -179,7 +122,7 @@ class LoginTests(FirefoxAccountsTests):
         """
         ERROR_MSG = ("Your username and password didn't match. " +
                      "Please try again.")
-        self.create_new_user()
+        self.create_test_user()
 
         self.assertTrue(self.browser.get_cookie('sessionid') is None)
         login_form = self.get_login_form()
@@ -197,7 +140,7 @@ class LoginTests(FirefoxAccountsTests):
         """
         Provding correct values successfully logs the user in.
         """
-        self.create_new_user()
+        self.create_test_user()
 
         self.assertTrue(self.browser.get_cookie('sessionid') is None)
 

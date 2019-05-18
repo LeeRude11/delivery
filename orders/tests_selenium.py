@@ -4,12 +4,12 @@ from time import sleep
 
 from .models import OrderInfo
 from .tests import CheckoutConstants
-# TODO from accounts?
-from accounts.tests_selenium import FirefoxAccountsTests
+
+from delivery.tests_selenium import DeliveryFirefoxTests
 from menu.tests import MenuTestConstants
 
 
-class OrdersFirefoxTests(MenuTestConstants, FirefoxAccountsTests):
+class OrdersFirefoxTests(MenuTestConstants, DeliveryFirefoxTests):
 
     CHECKOUT_URL = reverse('orders:checkout')
 
@@ -75,12 +75,8 @@ class ShoppingCartTests(OrdersFirefoxTests):
         url = self.live_server_url + reverse('orders:shopping_cart')
         self.browser.get(url)
         self.browser.find_element_by_link_text('Checkout').click()
-        # TODO - browser.current_url
-        div = self.browser.find_element_by_tag_name('div')
-        self.assertIn(
-            "This is a checkout page.",
-            div.text
-        )
+        self.assertEqual(self.browser.current_url,
+                         self.live_server_url + self.CHECKOUT_URL)
 
 
 class CheckoutTests(CheckoutConstants, OrdersFirefoxTests):
@@ -128,10 +124,10 @@ class CheckoutTests(CheckoutConstants, OrdersFirefoxTests):
         checkout_form.submit()
 
         sleep(0.5)
-        div = self.browser.find_element_by_tag_name('div')
+        result = self.browser.find_element_by_id('result')
         self.assertIn(
             "Your order was placed.",
-            div.text
+            result.text
         )
         self.assertTrue(len(self.client.session['cart']) == 0)
         OrderInfo.objects.get()
