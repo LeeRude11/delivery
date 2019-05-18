@@ -14,21 +14,26 @@
   </ul>
   {% endif %}
   <h1>Welcome to Food Delivery(c) website.</h1>
-  <navbar>
-    <a href="{% url 'menu:menu' %}">Menu</a>
-    <a href="{% url 'delivery' %}">Delivery Info</a>
-    <a href="{% url 'info' %}">Company Info</a>
-    <a href="{% url 'orders:shopping_cart' %}">Shopping Cart</a>
-    <span>: {{ request.session.cart_cost|default:"0"}}</span>
+  <header>
+    <nav id="main-bar">
+      <a href="{% url 'index' %}">Home page(TODO logo)</a>
+      <a href="{% url 'menu:menu' %}">Menu</a>
+      <a href="{% url 'delivery' %}">Delivery Info</a>
+      <a href="{% url 'info' %}">Company Info</a>
+    </nav>
 
-    {% if user.is_authenticated %}
-    <a href="{% url 'accounts:profile' %}">Profile</a>
-    <a href="{% url 'accounts:logout' %}">Log out</a>
-    {% else %}
-    <a href="{% url 'accounts:register' %}">Register</a>
-    <a href="{% url 'accounts:login' %}">Log in</a>
-    {% endif %}
-  </navbar>
+    <div id="cart">
+      <a href="{% url 'orders:shopping_cart' %}">Shopping Cart</a>
+      <span>: {{ request.session.cart_cost|default:"0"}}</span>
+      {% if user.is_authenticated %}
+      <a href="{% url 'accounts:profile' %}">Profile</a>
+      <a href="{% url 'accounts:logout' %}">Log out</a>
+      {% else %}
+      <a href="{% url 'accounts:register' %}">Register</a>
+      <a href="{% url 'accounts:login' %}">Log in</a>
+      {% endif %}
+    </div>
+  </header>
   {% block content %}
   {% endblock %}
   <h2>And we're back to base template.</h2>
