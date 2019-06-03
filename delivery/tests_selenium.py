@@ -40,6 +40,15 @@ class DeliveryFirefoxTests(LoginBrowserUserMixin, StaticLiveServerTestCase):
         form.submit()
         sleep(0.5)
 
+    def assert_element_stale(self, element):
+        """
+        Try to access an element expecting stale state.
+        """
+        self.assertRaises(
+            common.exceptions.StaleElementReferenceException,
+            element.is_enabled
+        )
+
 
 """
 Base HTML template to be used on every page contains these links.
