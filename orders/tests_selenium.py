@@ -1,5 +1,6 @@
 from django.urls import reverse
 
+from random import randint
 from time import sleep
 
 from .models import OrderInfo
@@ -14,7 +15,7 @@ class OrdersFirefoxTests(MenuTestConstants, DeliveryFirefoxTests):
     CHECKOUT_URL = reverse('orders:checkout')
 
 
-class ShoppingCartTests(OrdersFirefoxTests):
+class ShoppingCartTestsWithoutSetup(OrdersFirefoxTests):
 
     def test_shopping_cart_is_empty(self):
         """
@@ -22,58 +23,121 @@ class ShoppingCartTests(OrdersFirefoxTests):
         """
         self.login_browser_user()
         url = self.live_server_url + reverse('orders:shopping_cart')
-
         self.browser.get(url)
+
         self.assertEqual(
             self.browser.find_element_by_tag_name('p').text,
             "Your shopping cart is empty."
         )
 
+
+class ShoppingCartTests(OrdersFirefoxTests):
+
+    def setUp(self):
+        super().setUp()
+        self.login_browser_user()
+        self.expected_contents = self.fill_session_cart()
+        url = self.live_server_url + reverse('orders:shopping_cart')
+        self.browser.get(url)
+
+    def get_list_of_items(self):
+        return self.browser.find_elements_by_tag_name('li')
+
+    def get_item_dict(self, item):
+        """
+        Get actions and values associated with the item.
+        """
+        item_values = [
+            'item_name', 'current_amount', 'item_price', 'item_cost']
+        item_dict = {}
+        for value in item_values:
+            key = value.split('_')[1]
+            item_dict[key] = item.find_element_by_class_name(value)
+        item_dict['id'] = item_dict['amount'].get_attribute('data-item_id')
+
+        ch_amount = item.find_elements_by_class_name('change-amount')
+        for button in ch_amount:
+            action = button.get_attribute('data-action')
+            item_dict[action] = button
+
+        return item_dict
+
     def test_shopping_cart_has_items(self):
         """
         Added to cart items are displayed correctly.
         """
-        self.login_browser_user()
-        expected_contents = self.fill_session_cart()
-        url = self.live_server_url + reverse('orders:shopping_cart')
-        self.browser.get(url)
+        list_items = self.get_list_of_items()
 
-        list_items = self.browser.find_elements_by_tag_name('li')
+        self.assertTrue(len(self.expected_contents) == len(list_items))
 
-        self.assertTrue(len(expected_contents) == len(list_items))
-
-        for item, list_item in zip(expected_contents, list_items):
-            text = list_item.text
-            self.assertIn(item['name'], text)
-            self.assertIn(str(item['price']), text)
-            self.assertIn(str(item['cost']), text)
-            amount = list_item.find_element_by_id('amount')
-            self.assertEqual(item['amount'], int(amount.get_property('value')))
-        self.assertIn(
+        for expected_item, list_item in zip(
+                self.expected_contents, list_items):
+            item_dict = self.get_item_dict(list_item)
+            for key in expected_item:
+                try:
+                    list_value = item_dict[key].text
+                except AttributeError:
+                    list_value = item_dict[key]
+                self.assertEqual(str(expected_item[key]), list_value)
+        self.assertEqual(
             str(self.client.session['cart_cost']),
             self.browser.find_element_by_id('food_cost').text
         )
 
-    def not_test_update_shopping_cart(self):
+    def test_update_shopping_cart(self):
         """
         Amount of items in cart can be changed.
         """
-        # TODO
+        food_cost = self.browser.find_element_by_id('food_cost')
+        old_food_cost = int(food_cost.text)
 
-    def not_test_remove_item_from_cart(self):
+        items = self.get_list_of_items()
+        index = randint(1, len(items) - 1)
+        list_item = self.get_item_dict(items[index])
+        item_price = self.expected_contents[index]['price']
+        old_cost = self.expected_contents[index]['cost']
+
+        increase_by = randint(5, 10)
+        directions = [
+            {
+                'action': 'increase',
+                'range': range(1, increase_by + 1)
+            },
+            {
+                'action': 'decrease',
+                'range': range(increase_by - 1, - 1, -1)
+            }
+        ]
+        for direction in directions:
+            for i in direction['range']:
+                list_item[direction['action']].click()
+                sleep(0.1)
+                new_cost = int(list_item['cost'].text)
+                new_food_cost = int(food_cost.text)
+                self.assertTrue(new_food_cost - old_food_cost ==
+                                new_cost - old_cost == item_price * i)
+
+    def test_remove_item_from_cart(self):
         """
         Items in cart can be removed.
         """
-        # TODO
+        items = self.get_list_of_items()
+        index = randint(1, len(items) - 1)
+        list_item = self.get_item_dict(items[index])
+
+        food_cost = self.browser.find_element_by_id('food_cost')
+        old_food_cost = int(food_cost.text)
+        cost_loss = self.expected_contents[index]['cost']
+        list_item['remove'].click()
+
+        new_food_cost = int(food_cost.text)
+        self.assertEqual(new_food_cost, old_food_cost - cost_loss)
+        self.assert_element_stale(items[index])
 
     def test_link_to_checkout(self):
         """
         Link at the bottom leads to checkout page.
         """
-        self.login_browser_user()
-        self.fill_session_cart()
-        url = self.live_server_url + reverse('orders:shopping_cart')
-        self.browser.get(url)
         self.browser.find_element_by_link_text('Checkout').click()
         self.assertEqual(self.browser.current_url,
                          self.live_server_url + self.CHECKOUT_URL)
