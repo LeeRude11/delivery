@@ -5,7 +5,6 @@ from django.contrib import messages
 
 from .models import OrderInfo, OrderContents
 from menu.models import MenuItem
-from menu.views import update_cart
 from accounts.forms import CustomOrderForm
 
 
@@ -13,19 +12,6 @@ def shopping_cart(request):
     template_name = 'orders/shopping_cart.html'
     cart_contents = build_cart_contents(request.session.get('cart', {}))
     return render(request, template_name, cart_contents)
-
-
-def orders_update_cart(request, menuitem_id):
-    # TODO reusable app, separated units? MenuItem model is also used
-    update_cart(request, menuitem_id)
-    return HttpResponseRedirect(reverse('orders:shopping_cart'))
-
-
-def remove_item(request, menuitem_id):
-    request.POST = request.POST.copy()
-    request.POST['amount'] = '0'
-    update_cart(request, menuitem_id)
-    return HttpResponseRedirect(reverse('orders:shopping_cart'))
 
 
 def checkout(request):
