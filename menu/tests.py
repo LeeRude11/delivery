@@ -14,14 +14,26 @@ class MenuTestConstants(object):
         'price': 100
     }
 
+    def change_item_amount_in_cart(self, item_id=None, amount=None,
+                                   action='increase'):
+        """
+        Post an amount (provided OR random) of
+        an item (provided OR the only available one).
+        Return the randomized amount.
+        """
+        amount = amount or randint(1, 10)
+        item_id = item_id or MenuItem.objects.get().id
+        url = reverse('menu:update_cart')
+        for i in range(amount):
+            self.client.get(url, {'item_id': item_id, 'action': action})
+        return amount
+
     def fill_session_cart(self):
         expected_contents = []
         for i in range(3):
             new_menu_item = MenuItem.objects.create(
                 name=f'Dish{i}', price=randint(10, 300))
-            add_url = reverse('menu:update_cart', args=(new_menu_item.id,))
-            amount = randint(1, 10)
-            self.client.post(add_url, {'amount': amount})
+            amount = self.change_item_amount_in_cart(item_id=new_menu_item.id)
             expected_contents.append({
                 'id': new_menu_item.id,
                 'name': new_menu_item.name,
@@ -41,23 +53,12 @@ class CustomTestCase(AccountsTestConstants, MenuTestConstants, TestCase):
         item_id = MenuItem.objects.create(**self.DEF_DISH).id
         return item_id
 
-    def add_item_to_cart(self, item_id=None, amount=None):
+    def assert_session_key(self, key, expected):
         """
-        Post [provided | random] amount of
-        [provided | the only available one] item.
-        Return response object and randomized amount.
+        A certain value is expected in session object.
         """
-        if amount is None:
-            amount = randint(1, 10)
-        if item_id is None:
-            # TODO the only one or should make it the last one?
-            item_id = MenuItem.objects.get().id
-        url = reverse('menu:update_cart', args=(item_id,))
-        response = self.client.post(url, {'amount': amount}, follow=True)
-        return {
-            'response': response,
-            'amount': amount
-            }
+        session = self.client.session
+        self.assertEqual(session[key], expected)
 
 
 # Models tests
@@ -106,7 +107,7 @@ class MenuItemViewTests(CustomTestCase):
         """
         item_id = self.add_menu_item()
 
-        amount = self.add_item_to_cart()['amount']
+        amount = self.change_item_amount_in_cart()
         url = reverse('menu:detail', args=(item_id,))
         response = self.client.get(url)
         self.assertEqual(response.context['current_amount'], amount)
@@ -114,15 +115,73 @@ class MenuItemViewTests(CustomTestCase):
 
 class MenuItemUpdateCartTests(CustomTestCase):
 
+    URL = reverse('menu:update_cart')
+
     def test_update_cart_post_only(self):
         """
-        Only accept POST requests.
+        Only accept GET requests.
         """
         item_id = self.add_menu_item()
-        url = reverse('menu:update_cart', args=(item_id,))
-        response = self.client.get(url, follow=True)
-        self.assertRedirects(response, reverse('menu:detail',
-                             args=(item_id,)))
+        response = self.client.post(
+            self.URL, {'item_id': item_id, 'action': 'increase'}, follor=True)
+        self.assertRedirects(response, reverse('menu:menu'))
+
+    def test_get_without_action(self):
+        """
+        Request to update_cart without providing action query returns
+        bad request.
+        """
+        item_id = self.add_menu_item()
+        response = self.client.get(self.URL, {'item_id': item_id})
+        self.assertEqual(response.status_code, 400)
+        self.assert_session_key('cart', {})
+
+    def test_wrong_action(self):
+        """
+        Passing improper action returns bad request
+        """
+        item_id = self.add_menu_item()
+        response = self.client.get(
+            self.URL, {'item_id': item_id, 'action': 'no_such_action'})
+        self.assertEqual(response.status_code, 400)
+        self.assert_session_key('cart', {})
+
+    def test_decrease_below_zero(self):
+        """
+        Trying to decrease amount of item in cart below zero returns
+        bad request.
+        """
+        item_id = self.add_menu_item()
+        query = {'item_id': item_id, 'action': 'increase'}
+        self.client.get(self.URL, query)
+
+        query['action'] = 'decrease'
+
+        self.client.get(self.URL, query)
+        response = self.client.get(self.URL, query)
+
+        self.assertEqual(response.status_code, 400)
+        self.assert_session_key('cart', {})
+
+    def test_success_json_cart_cost(self):
+        """
+        Successful update_cart request returns a JSON response
+        with updated cart cost.
+        """
+        item_id = self.add_menu_item()
+        query = {'item_id': item_id, 'action': 'increase'}
+        response = self.client.get(self.URL, query)
+
+        self.assertEqual(response.status_code, 200)
+        expected_json = {
+            'new_cost': self.DEF_DISH['price']
+        }
+        self.assertEqual(response.json(), expected_json)
+
+        query['action'] = 'decrease'
+        response = self.client.get(self.URL, query)
+        expected_json['new_cost'] = 0
+        self.assertEqual(response.json(), expected_json)
 
     def test_add_item_to_cart(self):
         """
@@ -130,33 +189,13 @@ class MenuItemUpdateCartTests(CustomTestCase):
         """
         item_id = self.add_menu_item()
 
-        item_added = self.add_item_to_cart()
-        response, amount = item_added['response'], item_added['amount']
-        self.assertRedirects(response, reverse('menu:menu'))
+        item_added = self.change_item_amount_in_cart()
+        amount = item_added
 
-        session = self.client.session
         expected_cart = {
             f'{item_id}': f'{amount}'
         }
-        self.assertEqual(session['cart'], expected_cart)
-
-    def test_deny_non_ints_and_negative(self):
-        """
-        Trigger an error message if provided item amount was negative,
-        or wasn't an integer.
-        """
-        item_id = self.add_menu_item()
-
-        amounts = [-1, 1.5, 'Hello']
-        for amount in amounts:
-            response = self.add_item_to_cart(amount=amount)['response']
-            self.assertRedirects(response, reverse('menu:detail',
-                                 args=(item_id,)))
-            message = list(response.context.get('messages'))[0]
-            self.assertEqual(message.tags, 'error')
-            self.assertTrue("Incorrect amount." in message.message)
-        session = self.client.session
-        self.assertRaises(KeyError, lambda: session['cart'])
+        self.assert_session_key('cart', expected_cart)
 
     def test_remove_some_items(self):
         """
@@ -164,43 +203,36 @@ class MenuItemUpdateCartTests(CustomTestCase):
         """
         item_id = self.add_menu_item()
 
-        self.add_item_to_cart(amount=randint(6, 10))
-        new_amount = self.add_item_to_cart(amount=randint(1, 5))['amount']
+        added_amount = self.change_item_amount_in_cart(amount=randint(6, 10))
+        removed_amount = self.change_item_amount_in_cart(
+            amount=randint(1, 5), action='decrease')
+        new_amount = added_amount - removed_amount
 
-        session = self.client.session
         expected_cart = {
             f'{item_id}': f'{new_amount}'
         }
-        self.assertEqual(session['cart'], expected_cart)
+        self.assert_session_key('cart', expected_cart)
 
-    def test_remove_all_items(self):
+    def test_decrease_item_to_zero(self):
         """
-        Item key is removed from cart if provided amount is 0.
+        Item key is removed from cart if decreased to 0.
         """
         self.add_menu_item()
 
-        self.add_item_to_cart()
-        self.add_item_to_cart(amount=0)
-        session = self.client.session
-        expected_cart = {}
-        self.assertEqual(session['cart'], expected_cart)
+        amount = self.change_item_amount_in_cart()
+        self.change_item_amount_in_cart(amount=amount, action='decrease')
+        self.assert_session_key('cart', {})
 
-    def test_error_when_amount_not_provided(self):
+    def test_remove_item_from_cart(self):
         """
-        Trigger an error message if amount of the item wasn't provided.
+        Remove action allows to remove the whole amount of item from cart.
         """
-        item_id = self.add_menu_item()
-        url = reverse('menu:update_cart', args=(item_id,))
+        self.add_menu_item()
 
-        response = self.client.post(url, follow=True)
-        self.assertRedirects(response, reverse('menu:detail',
-                             args=(item_id,)))
-        session = self.client.session
-        message = list(response.context.get('messages'))[0]
-
-        self.assertEqual(message.tags, 'error')
-        self.assertTrue("Incorrect amount." in message.message)
-        self.assertRaises(KeyError, lambda: session['cart'])
+        self.change_item_amount_in_cart()
+        # removed should be accessed 1 time to remove whole item
+        self.change_item_amount_in_cart(amount=1, action='remove')
+        self.assert_session_key('cart', {})
 
     def test_add_various_items_to_cart(self):
         """
@@ -209,8 +241,7 @@ class MenuItemUpdateCartTests(CustomTestCase):
         expected_cart = {}
         for item in self.fill_session_cart():
             expected_cart[str(item['id'])] = str(item['amount'])
-        session = self.client.session
-        self.assertEqual(session['cart'], expected_cart)
+        self.assert_session_key('cart', expected_cart)
 
     def test_cart_cost_added(self):
         """
@@ -219,8 +250,7 @@ class MenuItemUpdateCartTests(CustomTestCase):
         expected_cost = 0
         for item in self.fill_session_cart():
             expected_cost += item['price'] * item['amount']
-        session = self.client.session
-        self.assertEqual(session['cart_cost'], expected_cost)
+        self.assert_session_key('cart_cost', expected_cost)
 
     def test_cart_cost_removes(self):
         """
@@ -237,13 +267,15 @@ class MenuItemUpdateCartTests(CustomTestCase):
         expected_loss = (item_to_remove['price'] * item_to_remove['amount'] +
                          item_to_decrease['price'] * amount_to_decrease)
 
-        self.add_item_to_cart(item_id=item_to_remove['id'], amount=0)
-        self.add_item_to_cart(
+        self.change_item_amount_in_cart(
+            item_id=item_to_remove['id'], amount=item_to_remove['amount'],
+            action='decrease')
+        self.change_item_amount_in_cart(
             item_id=item_to_decrease['id'],
-            amount=(item_to_decrease['amount'] - amount_to_decrease))
+            amount=amount_to_decrease,
+            action='decrease')
 
-        new_cost = self.client.session['cart_cost']
-        self.assertEqual(old_cost - expected_loss, new_cost)
+        self.assert_session_key('cart_cost', old_cost - expected_loss)
 
 
 class MenuItemUpdateCartTestsLoggedIn(MenuItemUpdateCartTests):

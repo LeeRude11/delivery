@@ -1,10 +1,10 @@
 from django.urls import reverse
 
 from random import randint
+from time import sleep
 
 from .models import MenuItem
 from delivery.tests_selenium import DeliveryFirefoxTests
-from time import sleep
 
 
 class MenuListTests(DeliveryFirefoxTests):
@@ -55,53 +55,83 @@ class MenuDetailTests(DeliveryFirefoxTests):
             'menu:detail', args=(test_item.id,))
         self.browser.get(url)
 
-        name_header = self.browser.find_element_by_id('item_name')
-        price_header = self.browser.find_element_by_id('item_price')
+        name_header = self.browser.find_element_by_class_name('item_name')
+        price_header = self.browser.find_element_by_class_name('item_price')
 
         self.assertEqual(name_header.text, test_item.name)
         self.assertIn(str(test_item.price), price_header.text)
 
-    def test_amount_accepted_and_updates(self):
-        """
-        Providing value in amount form updates current amount.
-        """
-        # self.login_browser_user()
 
-        new_menu_item = MenuItem.objects.create(
-            name=f'Dish{randint(1, 10)}', price=randint(10, 300))
-
-        url = self.live_server_url + reverse(
-            'menu:detail', args=(new_menu_item.id,))
-
-        self.browser.get(url)
-        amount_form = self.browser.find_element_by_id(
-            'amount')
-
-        self.assertEqual(
-            int(amount_form.get_property('value')),
-            0
-        )
-
-        amount = randint(1, 10)
-        amount_form.clear()
-        amount_form.send_keys(amount)
-        amount_form.submit()
-
-        sleep(0.5)
-        self.browser.get(url)
-        amount_form = self.browser.find_element_by_id(
-            'amount')
-        self.assertEqual(
-            int(amount_form.get_property('value')),
-            amount
-        )
-
-
-class MenuDetailTestsLoggedIn(MenuDetailTests):
+# class MenuDetailTestsLoggedIn(MenuDetailTests):
+class MenuDetailTestsLoggedIn():
     """
     Rerun those tests but with a logged in user.
     """
+    # TODO unite tests to logged in
 
     def setUp(self):
         super().setUp()
         self.login_browser_user()
+
+
+class MenuUpdateCartJS(DeliveryFirefoxTests):
+    """
+    Test JavaScript implementation of updating the user cart.
+    """
+
+    def setUp(self):
+        super().setUp()
+
+        new_menu_item = MenuItem.objects.create(
+            name=f'Dish{randint(1, 10)}', price=randint(10, 300))
+
+        self.url = self.live_server_url + reverse(
+            'menu:detail', args=(new_menu_item.id,))
+        self.browser.get(self.url)
+
+        self.current_amount = self.browser.find_element_by_class_name(
+            'current_amount')
+        self.actions = {}
+
+        ch_amount = self.browser.find_elements_by_class_name('change-amount')
+        for button in ch_amount:
+            action = button.get_attribute('data-action')
+            self.actions[action] = button
+
+    def assert_no_errors(self):
+        error_div = self.browser.find_elements_by_id('error_div')
+        self.assertEqual(len(error_div), 0)
+
+    def test_change_amount(self):
+        """
+        Clicking on 'increase' and 'decrease' elements changes the amount
+        accordingly.
+        """
+
+        for i in range(10):
+            self.assertEqual(int(self.current_amount.text), i)
+            self.actions['increase'].click()
+
+        for i in range(10, 0, -1):
+            self.assertEqual(int(self.current_amount.text), i)
+            self.actions['decrease'].click()
+        self.assertEqual(int(self.current_amount.text), 0)
+        self.assert_no_errors()
+
+    def test_cart_cost_updated(self):
+        """
+        Test that with amount update cart cost is updated as well.
+        """
+        cart_cost = self.browser.find_element_by_id('cart-cost')
+
+        self.assertEqual(
+            int(cart_cost.text),
+            0
+        )
+
+        for i in range(1, 11):
+            self.actions['increase'].click()
+            sleep(0.1)
+            self.assertEqual(
+                int(cart_cost.text), i * MenuItem.objects.get().price)
+        self.assert_no_errors()
