@@ -1,10 +1,17 @@
 from django.views import generic
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponseRedirect
+from django.http import (
+    HttpResponseRedirect, JsonResponse, HttpResponseBadRequest)
 from django.urls import reverse
 from django.contrib import messages
 
 from .models import MenuItem
+
+UPD_ACTIONS = {
+    'increase': 1,
+    'decrease': -1,
+    'remove': None
+}
 
 
 class MenuListView(generic.ListView):
@@ -29,7 +36,7 @@ class MenuItemView(generic.DetailView):
         return context
 
 
-def update_cart(request, menuitem_id):
+def old_update_cart(request, menuitem_id):
 
     menuitem = get_object_or_404(MenuItem, pk=menuitem_id)
     if request.method != 'POST':
@@ -56,3 +63,42 @@ def update_cart(request, menuitem_id):
 
     request.session.modified = True
     return HttpResponseRedirect(reverse('menu:menu'))
+
+
+def update_cart(request):
+    if request.method != 'GET':
+        return HttpResponseRedirect(
+            reverse('menu:menu'))
+
+    item_id = request.GET.get('item_id', '')
+    # TODO 404 in AJAX?
+    menuitem = get_object_or_404(MenuItem, pk=item_id)
+
+    cart = request.session.setdefault('cart', {})
+    key = str(item_id)
+
+    action = request.GET.get('action', '')
+    try:
+        amount_to_add = UPD_ACTIONS[action] or -int(cart[key])
+    except(KeyError):
+        return HttpResponseBadRequest()
+    # TODO - a reasonable upper limit
+
+    # TODO str?
+    new_amount = int(cart.setdefault(key, '0')) + amount_to_add
+    if new_amount < 0:
+        # can't lower zero amount
+        return HttpResponseBadRequest()
+    elif new_amount == 0:
+        cost_change = -(int(cart[key]) * menuitem.price)
+        cart.pop(key)
+    else:
+        cost_change = amount_to_add * menuitem.price
+        cart[key] = str(int(cart[key]) + amount_to_add)
+
+    new_cost = request.session['cart_cost'] = request.session.setdefault(
+        'cart_cost', 0) + cost_change
+
+    request.session.modified = True
+
+    return JsonResponse({'new_cost': new_cost})
