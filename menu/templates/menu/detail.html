@@ -2,15 +2,19 @@
 {% block title %}
   {{ object.name }}
 {% endblock %}
+{% block head %}
+  {% load static %}
+  <script type="text/javascript" src="{% static 'menu/menu_script.js' %}" defer></script>
+  <script type="text/javascript">
+    const update_cart_url = "{% url 'menu:update_cart' %}"
+  </script>
+{% endblock %}
 {% block content %}
-<div id="item_name">{{ object.name }}</div>
-<div id="item_price"> Costs {{ object.price }}</div>
-<form action="{% url 'menu:update_cart' object.id %}" method="post">
-    {% csrf_token %}
-    {# very placeholder-ish #}
-    {# TODO throw a warning if user didn't update value and submitted #}
-    <label for="amount">Amount: </label>
-    <input id="amount" type="number" name="amount" value="{{current_amount}}">
-    <input type="submit" value="Confirm">
-</form>
+<div class="item_name">{{ object.name }}</div>
+<div class="item_price"> Costs {{ object.price }}</div>
+<div class="item_amount">
+    <div class="change-amount" data-action="decrease">-</div>
+    <div class="current_amount" data-item_id="{{ object.id }}">{{current_amount}}</div>
+    <div class="change-amount" data-action="increase">+</div>
+</div>
 {% endblock %}
