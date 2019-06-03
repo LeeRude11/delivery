@@ -2,6 +2,14 @@
 {% block title %}
   Shopping cart
 {% endblock %}
+{% block head %}
+  {% load static %}
+  <script type="text/javascript" src="{% static 'menu/menu_script.js' %}" defer></script>
+  <script type="text/javascript" src="{% static 'orders/orders_script.js' %}" defer></script>
+  <script type="text/javascript">
+    const update_cart_url = "{% url 'menu:update_cart' %}"
+  </script>
+{% endblock %}
 {% block content %}
 Hey, I am a shopping cart page.
 <div>
@@ -9,23 +17,24 @@ Hey, I am a shopping cart page.
    <ul>
       {% for item in contents %}
       <li>
-        {{ item.name }}
-        <form action="{% url 'orders:orders_update_cart' item.id %}" method="post">
-          {% csrf_token %}
-          <label for="amount">Amount:</label>
-          <input id="amount" type="number" name="amount" value="{{ item.amount }}">
-          <input type="submit" value="Confirm">
-        </form>
-        x {{ item.price }} = {{ item.cost }}
-        <form action="{% url 'orders:remove_item' item.id %}" method="post">
-          {% csrf_token %}
-          <input type="submit" value="Remove">
-        </form>
+        <div class="item_name">{{ item.name }}</div>
+        <div class="item_amount">
+          <div class="change-amount" data-action="decrease">-</div>
+          <div>
+            <span class="current_amount" data-item_id="{{ item.id }}">{{ item.amount }}</span>
+            {# TODO - CSS selector for symbol #} x
+            <span class="item_price">{{ item.price }}</span>
+            =
+            <span class="item_cost">{{ item.cost }}</span>
+          </div>
+          <div class="change-amount" data-action="increase">+</div>
+          <button class="change-amount" data-action="remove">Remove</button>
+        </div>
       </li>
       {% endfor %}
   </ul>
-  <div id="food_cost">
-    Food cost: {{ request.session.cart_cost }}
+  <div id="bottom_cost">
+    Food cost: <span id="food_cost">{{ request.session.cart_cost }}</span>
   </div>
   {% else %}
     <p>Your shopping cart is empty.</p>
