@@ -55,10 +55,8 @@ class AccountsTestConstants(object):
     ARBITRARY_NEW_DATE = date(1990, 1, 1)
 
     def login_test_user(self):
-        self.create_test_user()
-        login_dict = {
-            k: self.user_for_tests[v] for k, v in self.login_fields.items()}
-        self.client.login(**login_dict)
+        user = self.create_test_user()
+        self.client.force_login(user)
 
     def user_without_password_fields(self):
         user = self.user_for_tests.copy()
