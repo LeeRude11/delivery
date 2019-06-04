@@ -14,14 +14,14 @@ function updateCart(e) {
   let amount_container = e.target.parentNode
   let current_amount = amount_container.getElementsByClassName('current_amount')[0]
 
-  let last_amount = Number(current_amount.textContent)
+  let last_amount_num = Number(current_amount.textContent)
   let action = e.target.dataset.action
 
   let new_amount
   if (action === 'remove') {
     new_amount = 0
   } else {
-    new_amount = last_amount + AMOUNT_CHANGE[action]
+    new_amount = last_amount_num + AMOUNT_CHANGE[action]
     if (new_amount < 0) {
       return
     }
@@ -47,8 +47,9 @@ function updateCart(e) {
     }
     parseResult(responseJson, elements)
   }).catch(function(error) {
-    // TODO do i need to pass current_amount and last_amount?
-    handleError(error);
+    // set amount to previous and show an error
+    current_amount.textContent = last_amount_num
+    showError(error, amount_container);
   });
 };
 
@@ -64,25 +65,25 @@ function encodeQueryData(data) {
   return ret.join('&');
 };
 
-function handleError(error) {
+function showError(error, container) {
   console.log('There has been a problem with your fetch operation: ', error.message);
-
-  // set amount value to last_amount and show an error message
-  current_amount.textContent = last_amount
 
   if (!document.getElementById('error_div')) {
     let error_div = document.createElement('div')
     error_div.id = 'error_div'
-    current_amount.parentElement.appendChild(error_div)
+    container.appendChild(error_div)
+
+    let error_text_span = document.createElement('span')
+    error_text_span.id = 'error_text'
+    error_div.appendChild(error_text_span)
 
     let close_button = document.createElement('button')
     close_button.textContent = 'Close'
-    current_amount.parentElement.appendChild(close_button)
+    error_div.appendChild(close_button)
 
     close_button.addEventListener('click', () => {
-      current_amount.parentElement.removeChild(error_div)
-      current_amount.parentElement.removeChild(close_button)
+      container.removeChild(error_div)
     })
   }
-  document.getElementById('error_div').textContent = error.message
+  document.getElementById('error_text').textContent = error.message
 };
