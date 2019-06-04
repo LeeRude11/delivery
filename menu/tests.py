@@ -193,7 +193,7 @@ class MenuItemUpdateCartTests(CustomTestCase):
         amount = item_added
 
         expected_cart = {
-            f'{item_id}': f'{amount}'
+            f'{item_id}': amount
         }
         self.assert_session_key('cart', expected_cart)
 
@@ -209,7 +209,7 @@ class MenuItemUpdateCartTests(CustomTestCase):
         new_amount = added_amount - removed_amount
 
         expected_cart = {
-            f'{item_id}': f'{new_amount}'
+            f'{item_id}': new_amount
         }
         self.assert_session_key('cart', expected_cart)
 
@@ -240,7 +240,7 @@ class MenuItemUpdateCartTests(CustomTestCase):
         """
         expected_cart = {}
         for item in self.fill_session_cart():
-            expected_cart[str(item['id'])] = str(item['amount'])
+            expected_cart[f'{item["id"]}'] = item['amount']
         self.assert_session_key('cart', expected_cart)
 
     def test_cart_cost_added(self):

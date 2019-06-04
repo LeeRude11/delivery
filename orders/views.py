@@ -56,12 +56,12 @@ def build_cart_contents(cart_dict):
     contents = []
     for item, amount in cart_dict.items():
         current_item = MenuItem.objects.get(pk=item)
-        cost = current_item.price * int(amount)
+        cost = current_item.price * amount
         contents.append({
             'id': current_item.id,
             'name': current_item.name,
             'price': current_item.price,
-            'amount': int(amount),
+            'amount': amount,
             'cost': cost
         })
     return {'contents': contents}
@@ -72,4 +72,4 @@ def write_order_to_db(user, cart):
     for item, amount in cart.items():
         menu_item = MenuItem.objects.get(pk=item)
         OrderContents.objects.create(
-            order=new_order, menu_item=menu_item, amount=int(amount))
+            order=new_order, menu_item=menu_item, amount=amount)
