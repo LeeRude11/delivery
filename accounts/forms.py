@@ -4,8 +4,14 @@ from django.contrib.auth.forms import (
 from django.utils.translation import gettext_lazy as _
 
 import re
+from datetime import datetime
+
 from .models import User
 EMAIL_CHECK = '@'
+
+CURRENT_YEAR = datetime.now().year
+YEARS_RANGE = 100
+YEARS = range(CURRENT_YEAR, CURRENT_YEAR - YEARS_RANGE, -1)
 
 
 class CustomUserForm(forms.ModelForm):
@@ -23,6 +29,9 @@ class CustomUserForm(forms.ModelForm):
             'house',
             'apartment'
         )
+        widgets = {
+            'date_of_birth': forms.SelectDateWidget(years=YEARS),
+        }
 
     def clean_email(self):
         # store email in lowercase
