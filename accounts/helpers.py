@@ -51,42 +51,69 @@ class AccountsTestConstants(object):
         'username': 'phone_number',
         'password': 'password1',
     }
+    ORIG_DATE_FIELD = 'date_of_birth'
+    user_form_date_fields = [
+        'day', 'month', 'year'
+    ]
     phone_format_variations = ['+12345', '1(23)45', '123-45']
-    ARBITRARY_NEW_DATE = date(1990, 1, 1)
+
+    @property
+    def user_form_user(self):
+        """
+        Form used in Profile and Register views,
+        with date of birth broken down to three date fields.
+        """
+        user = self.user_for_tests.copy()
+        orig_field = 'date_of_birth'
+
+        full_date = user.pop(orig_field)
+        for new_field in self.user_form_date_fields:
+            key = f'{orig_field}_{new_field}'
+            user[key] = getattr(full_date, new_field)
+        return user
+
+    @property
+    def user_form_profile_user(self):
+        return self.user_without_password_fields(self.user_form_user)
 
     def login_test_user(self):
         user = self.create_test_user()
         self.client.force_login(user)
 
-    def user_without_password_fields(self):
-        user = self.user_for_tests.copy()
+    def user_without_password_fields(self, user=None):
+        user = user or self.user_for_tests.copy()
         user.pop('password1')
         user.pop('password2')
         return user
 
+    @property
     def user_for_create_user(self):
         user = self.user_without_password_fields()
         user['password'] = self.user_for_tests['password1']
         return user
 
+    @property
     def guest_user_for_create_guest_user(self):
         return {k: self.user_for_tests[k] for k in self.guest_user_fields}
 
+    @property
     def login_form_dict(self):
         """
-        Return a dict to pass into login form.
+        A dict to pass into login form.
         """
         form = {}
         for form_field, user_field in self.login_fields.items():
             form[form_field] = self.user_for_tests[user_field]
         return form
 
-    def get_required_fields_user(self):
+    @property
+    def required_fields_user(self):
         return {
             field: self.user_for_tests[field] for field in self.required_fields
         }
 
-    def get_profile_page_fields(self):
+    @property
+    def profile_page_fields(self):
         """
         Profile page has all user info fields except password.
         """
@@ -104,30 +131,29 @@ class AccountsTestConstants(object):
 
     NEW_PASSWORD = 'newtestpassword'
 
-    def get_password_change_dict(self):
+    @property
+    def password_change_dict(self):
         return {
             'old_password': self.user_for_tests['password1'],
             'new_password1': self.NEW_PASSWORD,
             'new_password2': self.NEW_PASSWORD
         }
 
-    def assert_db_integrity_error(self, user_dict):
+    def assert_db_value_error_in_create(self, user_dict):
         """
-        Assert IntegrityError in an atomic transaction.
+        ValueError is raised when required fields are not provided in
+        _create_user.
         """
-        # with self.assertRaises(utils.IntegrityError):
-        # TODO ValueError are raised in _create_user now
         with self.assertRaises(ValueError):
             with transaction.atomic():
                 USER_MODEL.objects.create_user(**user_dict)
 
     def create_test_user(self):
-        user_dict = self.user_for_create_user()
         return USER_MODEL.objects.create_user(
-            **user_dict)
+            **self.user_for_create_user)
 
     def create_test_guest_user(self):
-        guest_user_dict = self.guest_user_for_create_guest_user()
+        guest_user_dict = self.guest_user_for_create_guest_user
         return USER_MODEL.objects.create_guest_user(
             **guest_user_dict)
 

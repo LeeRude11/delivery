@@ -1,7 +1,10 @@
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
+from datetime import datetime, date
+
 from delivery.tests_selenium import DeliveryFirefoxTests
+
 
 USER_MODEL = get_user_model()
 
@@ -37,6 +40,7 @@ class RegisterTests(FirefoxAccountsTests):
         super().setUp()
         url = self.live_server_url + self.REGISTER_URL
         self.browser.get(url)
+        self.register_form = self.get_register_form()
 
     def get_register_form(self):
         """
@@ -48,7 +52,7 @@ class RegisterTests(FirefoxAccountsTests):
         """
         All expected fields are rendered.
         """
-        register_fields = self.user_for_tests.keys()
+        register_fields = self.user_form_user.keys()
         self.verify_available_fields(register_fields)
 
     def test_register_empty(self):
@@ -56,11 +60,10 @@ class RegisterTests(FirefoxAccountsTests):
         Can not register with empty values in required fields.
         """
         ERROR_MSG = "This field is required."
-        register_form = self.get_register_form()
         empty_required_fields = {
             field: "" for field in self.required_fields
         }
-        self.fill_submit_form_with_values(register_form,
+        self.fill_submit_form_with_values(self.register_form,
                                           empty_required_fields)
         # user was not created
         self.assertRaises(USER_MODEL.DoesNotExist, USER_MODEL.objects.get)
@@ -74,9 +77,8 @@ class RegisterTests(FirefoxAccountsTests):
         """
         Registration is successful and all provided fields are stored.
         """
-        register_form = self.get_register_form()
-        self.fill_submit_form_with_values(register_form,
-                                          self.user_for_tests)
+        self.fill_submit_form_with_values(self.register_form,
+                                          self.user_form_user)
         user = USER_MODEL.objects.get()
         for field in self.user_without_password_fields():
             field_value = getattr(user, field)
@@ -87,14 +89,41 @@ class RegisterTests(FirefoxAccountsTests):
         """
         Registration is successful without providing optional fields.
         """
-        register_form = self.get_register_form()
-        required_fields_user = self.get_required_fields_user()
-        self.fill_submit_form_with_values(register_form,
+        required_fields_user = self.required_fields_user
+        self.fill_submit_form_with_values(self.register_form,
                                           required_fields_user)
         user = USER_MODEL.objects.get()
         for field in self.unrequired_fields:
             field_value = getattr(user, field)
             self.assertTrue(field_value in (None, ''))
+
+    def test_register_date_element(self):
+        """
+        Date of birth field is represented with three <select> elements.
+        """
+        for field in self.user_form_date_fields:
+            id = f'id_{self.ORIG_DATE_FIELD}_{field}'
+            found_field = self.register_form.find_element_by_id(id)
+            self.assertEqual(found_field.tag_name, 'select')
+
+    def test_register_years_hundred_and_up(self):
+        """
+        Years available for selection are descending from current to
+        99 years ago.
+        """
+        CURRENT_YEAR = datetime.now().year
+        YEARS_RANGE = 100
+
+        year = self.register_form.find_element_by_id(
+            f'id_{self.ORIG_DATE_FIELD}_year')
+        options = year.find_elements_by_tag_name('option')
+
+        # there's an empty option
+        options.pop(0)
+        self.assertEqual(len(options), YEARS_RANGE)
+        descending = range(CURRENT_YEAR, CURRENT_YEAR - YEARS_RANGE, -1)
+        for option, year in zip(options, descending):
+            self.assertEqual(int(option.text), year)
 
 
 class LoginTests(FirefoxAccountsTests):
@@ -103,6 +132,7 @@ class LoginTests(FirefoxAccountsTests):
         super().setUp()
         url = self.live_server_url + self.LOGIN_URL
         self.browser.get(url)
+        self.login_form = self.get_login_form()
 
     def get_login_form(self):
         """
@@ -125,11 +155,10 @@ class LoginTests(FirefoxAccountsTests):
         self.create_test_user()
 
         self.assertTrue(self.browser.get_cookie('sessionid') is None)
-        login_form = self.get_login_form()
         empty_login_fields = {
             field: "" for field in self.login_fields.keys()
         }
-        self.fill_submit_form_with_values(login_form, empty_login_fields)
+        self.fill_submit_form_with_values(self.login_form, empty_login_fields)
         error_element = self.browser.find_element_by_xpath(
             f'//p[text()="{ERROR_MSG}"]')
         self.assertTrue(error_element is not None)
@@ -144,8 +173,8 @@ class LoginTests(FirefoxAccountsTests):
 
         self.assertTrue(self.browser.get_cookie('sessionid') is None)
 
-        login_form = self.get_login_form()
-        self.fill_submit_form_with_values(login_form, self.login_form_dict())
+        self.fill_submit_form_with_values(
+            self.login_form, self.login_form_dict)
 
         self.assertTrue(self.browser.get_cookie('sessionid') is not None)
 
@@ -157,6 +186,7 @@ class ProfileTests(FirefoxAccountsTests):
         self.login_browser_user()
         url = self.live_server_url + self.PROFILE_URL
         self.browser.get(url)
+        self.update_form = self.get_profile_update_form()
 
     def get_profile_update_form(self):
         """
@@ -174,13 +204,13 @@ class ProfileTests(FirefoxAccountsTests):
         """
         All expected fields are rendered.
         """
-        self.verify_available_fields(self.get_profile_page_fields())
+        self.verify_available_fields(self.user_form_profile_user.keys())
 
     def test_profile_fields_prefilled(self):
         """
         All expected fields are correctly pre-filled.
         """
-        profile_fields = self.user_without_password_fields()
+        profile_fields = self.user_form_profile_user
         for name, value in profile_fields.items():
             # django fields ids are formatted "id=id_{field_name}"
             field_id = 'id_' + name
@@ -208,16 +238,22 @@ class ProfileTests(FirefoxAccountsTests):
         """
 
         updated_user = {}
-        for field in self.get_profile_page_fields():
+        full_date = {}
+        for field, value in self.user_form_profile_user.items():
             try:
-                updated_user[field] = self.user_for_tests[field] + '1'
+                updated_user[field] = value + '1'
             except TypeError:
-                # date field
-                updated_user[field] = self.ARBITRARY_NEW_DATE
+                # int of date field
+                updated_user[field] = str(value + 1)
 
-        update_form = self.get_profile_update_form()
-        self.fill_submit_form_with_values(update_form, updated_user)
+                short_field = field.split(f'{self.ORIG_DATE_FIELD}_')[1]
+                full_date[short_field] = value + 1
+
+        self.fill_submit_form_with_values(self.update_form, updated_user)
+
         user = USER_MODEL.objects.get()
+        updated_user[self.ORIG_DATE_FIELD] = date(**full_date)
+
         for field in self.user_without_password_fields():
             field_value = getattr(user, field)
             self.assertEqual(field_value, updated_user[field])
@@ -247,7 +283,7 @@ class PasswordChangeTests(FirefoxAccountsTests):
         """
         All expected fields are rendered.
         """
-        self.verify_available_fields(self.get_password_change_dict().keys())
+        self.verify_available_fields(self.password_change_dict.keys())
 
     def test_change_password_success(self):
         """
@@ -257,7 +293,7 @@ class PasswordChangeTests(FirefoxAccountsTests):
         user = USER_MODEL.objects.get()
         self.assertFalse(user.check_password(self.NEW_PASSWORD))
 
-        new_password_form = self.get_password_change_dict()
+        new_password_form = self.password_change_dict
         pass_change_form = self.get_pass_change_form()
         self.fill_submit_form_with_values(pass_change_form, new_password_form)
 
@@ -270,7 +306,7 @@ class PasswordChangeTests(FirefoxAccountsTests):
         """
         self.assertTrue(self.browser.get_cookie('sessionid') is not None)
 
-        new_password_form = self.get_password_change_dict()
+        new_password_form = self.password_change_dict
         pass_change_form = self.get_pass_change_form()
         self.fill_submit_form_with_values(pass_change_form, new_password_form)
 

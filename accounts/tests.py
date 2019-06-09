@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from django.contrib import auth
 from django.db import utils
 
+from datetime import date
+
 from .helpers import AccountsTestConstants
 
 USER_MODEL = get_user_model()
@@ -15,7 +17,7 @@ class UserModelTests(TestCase, AccountsTestConstants):
         """
         User is created using create_user()
         """
-        user_dict = self.user_for_create_user()
+        user_dict = self.user_for_create_user
         new_user = self.create_test_user()
         self.assertEqual(new_user, USER_MODEL.objects.get())
         self.assertTrue(new_user.check_password(user_dict.pop('password')))
@@ -25,7 +27,7 @@ class UserModelTests(TestCase, AccountsTestConstants):
         """
         Superuser is created using create_superuser()
         """
-        user_dict = self.user_for_create_user()
+        user_dict = self.user_for_create_user
         new_superuser = USER_MODEL.objects.create_superuser(**user_dict)
         self.assertEqual(new_superuser, USER_MODEL.objects.get())
         self.assertTrue(USER_MODEL.objects.get().is_admin)
@@ -46,7 +48,7 @@ class UserModelTests(TestCase, AccountsTestConstants):
         """
         Unlike guest user, user and superuser require password.
         """
-        user = self.user_for_create_user()
+        user = self.user_for_create_user
         user['password'] = None
         with self.assertRaises(ValueError):
             USER_MODEL.objects.create_user(**user)
@@ -58,18 +60,18 @@ class UserModelTests(TestCase, AccountsTestConstants):
         Users are not allowed to have a phone_number or an email
         which are already registered.
         """
-        user_dict = self.user_for_create_user()
+        user_dict = self.user_for_create_user
         USER_MODEL.objects.create_user(**user_dict)
 
-        self.assert_db_integrity_error(user_dict)
+        self.assert_db_value_error_in_create(user_dict)
 
         orig_email = user_dict['email']
         user_dict['email'] = "1" + user_dict['email']
-        self.assert_db_integrity_error(user_dict)
+        self.assert_db_value_error_in_create(user_dict)
 
         user_dict['email'] = orig_email
         user_dict['phone_number'] = "1" + user_dict['phone_number']
-        self.assert_db_integrity_error(user_dict)
+        self.assert_db_value_error_in_create(user_dict)
 
         user_dict['email'] = "1" + user_dict['email']
         try:
@@ -84,7 +86,7 @@ class UserModelTests(TestCase, AccountsTestConstants):
         """
         self.create_test_guest_user()
 
-        user_dict = self.user_for_create_user()
+        user_dict = self.user_for_create_user
         try:
             USER_MODEL.objects.create_user(**user_dict)
         except (utils.IntegrityError, ValueError):
@@ -99,7 +101,7 @@ class UserModelTests(TestCase, AccountsTestConstants):
         Guest users are allowed to have
         a phone number and an email which were already registered.
         """
-        user_dict = self.user_for_create_user()
+        user_dict = self.user_for_create_user
         USER_MODEL.objects.create_user(**user_dict)
 
         try:
@@ -183,7 +185,7 @@ class RegisterViewTests(AccountsTestCase):
         APARTMENT_VALUE = ''
 
         url = reverse('accounts:register')
-        user = self.get_required_fields_user()
+        user = self.required_fields_user
         self.client.post(url, user, follow=True)
 
         unrequired_dict = {key: None for key in self.unrequired_fields}
@@ -274,12 +276,6 @@ class RegisterViewTests(AccountsTestCase):
         self.register_user()
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
-
-    def not_test_register_date_format(self):
-        """
-        Date format?
-        """
-        # TODO
 
 
 class LoginViewTests(AccountsTestCase):
@@ -374,14 +370,6 @@ class LoginViewTests(AccountsTestCase):
         response = self.client.post(url, form_to_post, follow=True)
         self.no_error_msgs(response)
 
-    def not_test_login_next_redirect(self):
-        """
-        Redirected to login and logged in users
-        proceed according to next parameter.
-        """
-        # TODO move this test to delivery app selenium tests
-        # OR accounts selenium?..
-
     def test_login_username_errors(self):
         """
         Login page error tells user to provide either email or phone number.
@@ -449,7 +437,7 @@ class ProfileViewTests(AccountsTestCase):
         response = self.client.get(url, follow=True)
         form_fields = list(response.context['form'].fields.keys())
 
-        profile_page_fields = self.get_profile_page_fields()
+        profile_page_fields = self.profile_page_fields
         self.assertEqual(len(form_fields), len(profile_page_fields))
         for field in profile_page_fields:
             try:
@@ -478,12 +466,17 @@ class ProfileViewTests(AccountsTestCase):
         url = reverse('accounts:profile')
 
         updated_user = {}
-        for field in self.get_profile_page_fields():
+        for field in self.profile_page_fields:
             try:
                 updated_user[field] = self.user_for_tests[field] + '1'
             except TypeError:
                 # date field
-                updated_user[field] = self.ARBITRARY_NEW_DATE
+                full_date = self.user_for_tests[field]
+                new_full_date = {}
+                for value in self.user_form_date_fields:
+                    new_full_date[value] = getattr(full_date, value) + 1
+                updated_user[field] = date(**new_full_date)
+
         self.client.post(url, updated_user, follow=True)
         response = self.client.get(url, follow=True)
         form_fields_w_values = response.context['form'].initial
@@ -581,7 +574,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         self.assertFalse(new_user.check_password(self.NEW_PASSWORD))
 
         response = self.client.post(
-            url, self.get_password_change_dict(), follow=True)
+            url, self.password_change_dict, follow=True)
         self.no_error_msgs(response)
         new_user = USER_MODEL.objects.get()
         self.assertTrue(new_user.check_password(self.NEW_PASSWORD))
@@ -596,7 +589,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
 
-        self.client.post(url, self.get_password_change_dict(), follow=True)
+        self.client.post(url, self.password_change_dict, follow=True)
 
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
@@ -608,10 +601,10 @@ class PasswordChangeViewTests(AccountsTestCase):
         self.register_user()
         url = reverse('accounts:password_change')
 
-        full_form = self.get_password_change_dict()
+        full_form = self.password_change_dict
         form_to_post = {}
 
-        fields_list = list(self.get_password_change_dict())
+        fields_list = list(self.password_change_dict)
         fields_dict = {
             'errors': fields_list.copy(),
             'clean': []
@@ -639,7 +632,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         self.register_user()
         url = reverse('accounts:password_change')
 
-        form_to_post = self.get_password_change_dict()
+        form_to_post = self.password_change_dict
         form_to_post['old_password'] = form_to_post['old_password'] + '1'
         response = self.client.post(url, form_to_post, follow=True)
         self.assertTrue('old_password' in response.context['form'].errors)
@@ -660,7 +653,7 @@ class PasswordChangeViewTests(AccountsTestCase):
         self.register_user()
         url = reverse('accounts:password_change')
 
-        form_to_post = self.get_password_change_dict()
+        form_to_post = self.password_change_dict
         form_to_post['new_password2'] = form_to_post['new_password2'] + '1'
         response = self.client.post(url, form_to_post, follow=True)
         self.assertTrue('new_password2' in response.context['form'].errors)

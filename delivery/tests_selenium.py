@@ -34,9 +34,13 @@ class DeliveryFirefoxTests(LoginBrowserUserMixin, StaticLiveServerTestCase):
         """
         for key, value in values.items():
             field = form.find_element_by_id('id_' + key)
-            field.clear()
-            # TODO can't pass datetime as is
-            field.send_keys(str(value))
+            try:
+                field.clear()
+                field.send_keys(value)
+            except(common.exceptions.InvalidElementStateException):
+                # select dropdown date element
+                date_field = webdriver.support.ui.Select(field)
+                date_field.select_by_value(str(value))
         form.submit()
         sleep(0.5)
 
