@@ -1,39 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>
     {% block title %}
     Welcome!
     {% endblock %}
   </title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'core/style.css' %}">
   {% block head %}
   {% endblock %}
 </head>
+
 <body>
   <header>
     <nav id="main-bar">
       <div id="main-sections">
-        <a href="{% url 'index' %}">Home page(TODO logo)</a>
-        <a href="{% url 'menu:specials' %}">Specials</a>
-        <a href="{% url 'menu:menu' %}">Menu</a>
-        <a href="{% url 'delivery' %}">Delivery Info</a>
-        <a href="{% url 'info' %}">Company Info</a>
-        <a href="{% url 'contacts' %}">Contacts</a>
+        <ul>
+          <li>
+            <a href="{% url 'core:index' %}">
+              <span>Home page(TODO logo)</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'menu:specials' %}">
+              <span>Specials</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'menu:menu' %}">
+              <span>Menu</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'core:delivery' %}">
+              <span>Delivery Info</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'core:info' %}">
+              <span>Company Info</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url 'core:contacts' %}">
+              <span>Contacts</span>
+            </a>
+          </li>
+        </ul>
       </div>
       <div id="user-sections">
-        <div id="cart">
-          <a href="{% url 'orders:shopping_cart' %}">
-            <span>Shopping Cart</span>
-            <span id="cart-cost">{{ request.session.cart_cost|default:"0" }}</span>
-          </a>
-        </div>
-        <div id="profile">
-          <a href="{% url 'accounts:profile' %}">Profile</a>
-        </div>
+        <ul>
+          <li id="cart">
+            <a href="{% url 'orders:shopping_cart' %}">
+              <span>Shopping Cart</span>
+              <span id="cart-cost">{{ request.session.cart_cost|default:"0" }}</span>
+            </a>
+          </li>
+          <li id="profile">
+            <a href="{% url 'accounts:profile' %}">
+              <span>Profile</span>
+            </a>
+          </li>
+        </ul>
       </div>
     </nav>
     {% if messages %}
     <ul class="messages">
-        {% for message in messages %}
-        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+      {% for message in messages %}
+      <li{% if message.tags %} class="{{ message.tags }}" {% endif %}>{{ message }}</li>
         {% endfor %}
     </ul>
     {% endif %}
@@ -48,3 +87,5 @@
     <div>Copyright whatever</div>
   </footer>
 </body>
+
+</html>
