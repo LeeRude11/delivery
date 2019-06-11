@@ -41,7 +41,7 @@ def specials(request):
     """
     Information about current specials.
     """
-    template_name = 'specials.html'
+    template_name = 'menu/specials.html'
     return render(request, template_name)
 
 
