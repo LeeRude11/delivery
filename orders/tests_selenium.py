@@ -6,7 +6,7 @@ from time import sleep
 from .models import OrderInfo
 from .tests import CheckoutConstants
 
-from delivery.tests_selenium import DeliveryFirefoxTests
+from core.tests_selenium import DeliveryFirefoxTests
 from menu.tests import MenuTestConstants
 
 

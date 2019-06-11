@@ -74,12 +74,12 @@ NAV_LINKS = [
         'tag_name': 'div',
         'id': 'main-sections',
         'links': [
-            'index',
+            'core:index',
             'menu:specials',
             'menu:menu',
-            'delivery',
-            'info',
-            'contacts'
+            'core:delivery',
+            'core:info',
+            'core:contacts'
         ]
     },
     {

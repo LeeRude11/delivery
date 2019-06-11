@@ -4,7 +4,7 @@ from random import randint
 from time import sleep
 
 from .models import MenuItem
-from delivery.tests_selenium import DeliveryFirefoxTests
+from core.tests_selenium import DeliveryFirefoxTests
 
 
 class MenuListTests(DeliveryFirefoxTests):

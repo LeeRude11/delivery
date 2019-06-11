@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 
 from datetime import datetime, date
 
-from delivery.tests_selenium import DeliveryFirefoxTests
+from core.tests_selenium import DeliveryFirefoxTests
 
 
 USER_MODEL = get_user_model()

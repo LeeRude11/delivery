@@ -1,11 +1,6 @@
 from django.test import TestCase
 from django.urls import reverse
 
-# from random import randint
-
-# from .models import MenuItem
-# from accounts.tests import AccountsTestConstants
-
 
 class DeliveryViewsTests(TestCase):
 
@@ -22,16 +17,22 @@ class DeliveryViewsTests(TestCase):
         """
         Index page exists and can be accessed.
         """
-        self.assert_page_is_functional('index')
+        self.assert_page_is_functional('core:index')
 
     def test_delivery_accessible(self):
         """
         Delivery info page exists and can be accessed.
         """
-        self.assert_page_is_functional('delivery')
+        self.assert_page_is_functional('core:delivery')
 
     def test_info_accessible(self):
         """
         Company info page exists and can be accessed.
         """
-        self.assert_page_is_functional('info')
+        self.assert_page_is_functional('core:info')
+
+    def test_contact_accessible(self):
+        """
+        Company contacts page exists and can be accessed.
+        """
+        self.assert_page_is_functional('core:contacts')
