@@ -23,3 +23,11 @@ def info(request):
     """
     template_name = 'info.html'
     return render(request, template_name)
+
+
+def contacts(request):
+    """
+    Company contacts page.
+    """
+    template_name = 'contacts.html'
+    return render(request, template_name)
