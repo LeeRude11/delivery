@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from django.http import (
     HttpResponseRedirect, JsonResponse, HttpResponseBadRequest)
 from django.urls import reverse
+from django.shortcuts import render
 
 from .models import MenuItem
 
@@ -33,6 +34,15 @@ class MenuItemView(generic.DetailView):
         else:
             context['current_amount'] = cur_amount
         return context
+
+
+def specials(request):
+    # TODO
+    """
+    Information about current specials.
+    """
+    template_name = 'specials.html'
+    return render(request, template_name)
 
 
 def update_cart(request):
