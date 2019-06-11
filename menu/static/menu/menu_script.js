@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function() {
 function updateCart(e) {
 
   let amount_container = e.target.parentNode
-  let current_amount = amount_container.getElementsByClassName('current_amount')[0]
+  let current_amount = amount_container.getElementsByClassName('current-amount')[0]
 
   let last_amount_num = Number(current_amount.textContent)
   let action = e.target.dataset.action
@@ -68,13 +68,13 @@ function encodeQueryData(data) {
 function showError(error, container) {
   console.log('There has been a problem with your fetch operation: ', error.message);
 
-  if (!document.getElementById('error_div')) {
+  if (!document.getElementById('error-div')) {
     let error_div = document.createElement('div')
-    error_div.id = 'error_div'
+    error_div.id = 'error-div'
     container.appendChild(error_div)
 
     let error_text_span = document.createElement('span')
-    error_text_span.id = 'error_text'
+    error_text_span.id = 'error-text'
     error_div.appendChild(error_text_span)
 
     let close_button = document.createElement('button')
@@ -85,5 +85,5 @@ function showError(error, container) {
       container.removeChild(error_div)
     })
   }
-  document.getElementById('error_text').textContent = error.message
+  document.getElementById('error-text').textContent = error.message
 };
