@@ -53,29 +53,44 @@ class DeliveryFirefoxTests(LoginBrowserUserMixin, StaticLiveServerTestCase):
             element.is_enabled
         )
 
+    def link_exists(self, element, url):
+        try:
+            link = element.find_element_by_xpath(f"//a[@href='{url}']")
+        except(common.exceptions.NoSuchElementException):
+            raise AssertionError
+        return link
+
 
 """
 Base HTML template to be used on every page contains these links.
 """
 # TODO index button on a logo
-MAIN_ELEM = {'nav': 'main-bar'}
-CART_ELEM = {'div': 'cart'}
-SITE_LINKS = {
-    'element': MAIN_ELEM,
-    'links': ['index', 'menu:menu', 'delivery', 'info']
+NAV_ELEMENT = {
+    'tag_name': 'nav',
+    'id': 'main-bar'
 }
-CART_LINKS = {
-    'element': CART_ELEM,
-    'links': ['orders:shopping_cart']
-}
-GUEST_LINKS = {
-    'element': CART_ELEM,
-    'links': ['accounts:register', 'accounts:login']
-}
-USER_LINKS = {
-    'element': CART_ELEM,
-    'links': ['accounts:profile', 'accounts:logout']
-}
+NAV_LINKS = [
+    {
+        'tag_name': 'div',
+        'id': 'main-sections',
+        'links': [
+            'index',
+            'menu:specials',
+            'menu:menu',
+            'delivery',
+            'info',
+            'contacts'
+        ]
+    },
+    {
+        'tag_name': 'div',
+        'id': 'user-sections',
+        'links': [
+            'orders:shopping_cart',
+            'accounts:profile'
+        ]
+    }
+]
 
 
 class DeliveryTests(DeliveryFirefoxTests):
@@ -86,78 +101,34 @@ class DeliveryTests(DeliveryFirefoxTests):
         self.browser.get(url)
 
     """
-    Helper functions.
-    """
-
-    def assert_links(self, links_dict, should_exist=True):
-        """
-        Assert that links are present in the element on the page.
-        """
-        (tag, id), = links_dict['element'].items()
-        element = self.browser.find_element_by_id(id)
-        self.assertEqual(element.tag_name, tag)
-
-        if should_exist:
-            check_function = self.link_exists
-        else:
-            check_function = self.link_does_not_exist
-
-        for path in links_dict['links']:
-            url = reverse(path)
-            check_function(element, url)
-
-    def link_exists(self, element, url):
-        try:
-            element.find_element_by_xpath(f"//a[@href='{url}']")
-        except(common.exceptions.NoSuchElementException):
-            raise AssertionError
-
-    def link_does_not_exist(self, element, url):
-        self.assertRaises(
-            common.exceptions.NoSuchElementException,
-            element.find_element_by_xpath,
-            f"//a[@href='{url}']")
-
-    """
     Tests.
     """
 
-    def test_links_available(self):
+    def test_header_displays_links(self):
         """
-        A set of pages is available at the top of each of those pages.
+        All expected links are in header.
         """
-        self.assert_links(SITE_LINKS)
-        self.assert_links(CART_LINKS)
+        nav = self.browser.find_element_by_id(NAV_ELEMENT['id'])
+        self.assertTrue(nav.tag_name, NAV_ELEMENT['tag_name'])
 
-    def test_guest_links_set(self):
-        """
-        Guests see links to /register and /login.
-        And don't see /profile and /logout.
-        """
-        self.assert_links(GUEST_LINKS)
-        self.assert_links(USER_LINKS, should_exist=False)
-
-    def test_authorized_links_set(self):
-        """
-        Users see /profile and /logout.
-        And don't see links to /register and /login.
-        """
-        self.login_browser_user()
-        self.browser.get(self.live_server_url)
-
-        self.assert_links(GUEST_LINKS, should_exist=False)
-        self.assert_links(USER_LINKS)
+        for div in NAV_LINKS:
+            found_div = nav.find_element_by_id(div['id'])
+            self.assertTrue(found_div.tag_name, div['tag_name'])
+            for link in div['links']:
+                url = reverse(link)
+                self.link_exists(found_div, url)
 
 
 class DeliverySiteWideTests(DeliveryFirefoxTests):
 
     def test_messages_displayed(self):
         """
-        Check that messages are displayed on the page.
+        Check that messages are displayed on the page in header.
         """
         url = reverse('orders:checkout')
         self.browser.get(self.live_server_url + url)
-        messages = self.browser.find_element_by_class_name('messages')
+        header = self.browser.find_element_by_tag_name('header')
+        messages = header.find_element_by_class_name('messages')
         self.assertEqual(messages.tag_name, 'ul')
         error = messages.find_element_by_class_name('error')
         self.assertEqual(error.text, "Your cart is empty.")

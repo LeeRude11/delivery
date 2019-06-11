@@ -48,10 +48,10 @@ class ShoppingCartTests(OrdersFirefoxTests):
         Get actions and values associated with the item.
         """
         item_values = [
-            'item_name', 'current_amount', 'item_price', 'item_cost']
+            'item-name', 'current-amount', 'item-price', 'item-cost']
         item_dict = {}
         for value in item_values:
-            key = value.split('_')[1]
+            key = value.split('-')[1]
             item_dict[key] = item.find_element_by_class_name(value)
         item_dict['id'] = item_dict['amount'].get_attribute('data-item_id')
 
@@ -81,14 +81,14 @@ class ShoppingCartTests(OrdersFirefoxTests):
                 self.assertEqual(str(expected_item[key]), list_value)
         self.assertEqual(
             str(self.client.session['cart_cost']),
-            self.browser.find_element_by_id('food_cost').text
+            self.browser.find_element_by_id('food-cost').text
         )
 
     def test_update_shopping_cart(self):
         """
         Amount of items in cart can be changed.
         """
-        food_cost = self.browser.find_element_by_id('food_cost')
+        food_cost = self.browser.find_element_by_id('food-cost')
         old_food_cost = int(food_cost.text)
 
         items = self.get_list_of_items()
@@ -125,7 +125,7 @@ class ShoppingCartTests(OrdersFirefoxTests):
         index = randint(1, len(items) - 1)
         list_item = self.get_item_dict(items[index])
 
-        food_cost = self.browser.find_element_by_id('food_cost')
+        food_cost = self.browser.find_element_by_id('food-cost')
         old_food_cost = int(food_cost.text)
         cost_loss = self.expected_contents[index]['cost']
         list_item['remove'].click()

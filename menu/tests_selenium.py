@@ -55,8 +55,8 @@ class MenuDetailTests(DeliveryFirefoxTests):
             'menu:detail', args=(test_item.id,))
         self.browser.get(url)
 
-        name_header = self.browser.find_element_by_class_name('item_name')
-        price_header = self.browser.find_element_by_class_name('item_price')
+        name_header = self.browser.find_element_by_class_name('item-name')
+        price_header = self.browser.find_element_by_class_name('item-price')
 
         self.assertEqual(name_header.text, test_item.name)
         self.assertIn(str(test_item.price), price_header.text)
@@ -90,7 +90,7 @@ class MenuUpdateCartJS(DeliveryFirefoxTests):
         self.browser.get(self.url)
 
         self.current_amount = self.browser.find_element_by_class_name(
-            'current_amount')
+            'current-amount')
         self.actions = {}
 
         ch_amount = self.browser.find_elements_by_class_name('change-amount')
@@ -99,7 +99,7 @@ class MenuUpdateCartJS(DeliveryFirefoxTests):
             self.actions[action] = button
 
     def assert_no_errors(self):
-        error_div = self.browser.find_elements_by_id('error_div')
+        error_div = self.browser.find_elements_by_id('error-div')
         self.assertEqual(len(error_div), 0)
 
     def test_change_amount(self):

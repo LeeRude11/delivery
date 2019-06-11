@@ -416,16 +416,15 @@ class ProfileViewTests(AccountsTestCase):
         Only authorized users can access profile page.
         """
         profile_url = reverse('accounts:profile')
-        error_msg = "Please login to see this page."
         next_url = reverse('accounts:login') + '?next=' + profile_url
 
         response = self.client.get(profile_url, follow=True)
         self.assertRedirects(response, next_url)
-        self.assertContains(response, error_msg)
 
         self.register_user()
         response = self.client.get(profile_url, follow=True)
-        self.assertNotContains(response, error_msg)
+        with self.assertRaises(AssertionError):
+            self.assertRedirects(response, next_url)
 
     def test_profile_displays_form(self):
         """
@@ -562,7 +561,6 @@ class PasswordChangeViewTests(AccountsTestCase):
         response = self.client.post(url, follow=True)
         next_url = reverse('accounts:login') + '?next=' + url
         self.assertRedirects(response, next_url)
-        self.assertContains(response, "Please login to see this page.")
 
     def test_password_change_success(self):
         """

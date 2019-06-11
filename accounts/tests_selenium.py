@@ -178,6 +178,20 @@ class LoginTests(FirefoxAccountsTests):
 
         self.assertTrue(self.browser.get_cookie('sessionid') is not None)
 
+    def test_login_register_link(self):
+        """
+        Login page has a link to register page.
+        """
+        LOGIN_ALT = self.browser.find_element_by_id('login-alt')
+        link = self.link_exists(LOGIN_ALT, self.REGISTER_URL)
+        self.assertEqual(link.text, 'Registration')
+
+    def not_test_login_forgot_pass(self):
+        """
+        Login page has a link to password restore.
+        """
+        # TODO
+
 
 class ProfileTests(FirefoxAccountsTests):
 
