@@ -41,7 +41,9 @@ class ShoppingCartTests(OrdersFirefoxTests):
         self.browser.get(url)
 
     def get_list_of_items(self):
-        return self.browser.find_elements_by_tag_name('li')
+        # TODO temporary solution
+        body = self.browser.find_element_by_tag_name('main')
+        return body.find_elements_by_tag_name('li')
 
     def get_item_dict(self, item):
         """

@@ -9,16 +9,19 @@ from core.tests_selenium import DeliveryFirefoxTests
 
 class MenuListTests(DeliveryFirefoxTests):
 
+    MENU_LIST_ID = 'menu-items-list'
+
     def test_no_items_in_menu(self):
         """
         Accessing empty menu displays appropriate text.
         """
         menu_url = self.live_server_url + reverse('menu:menu')
         self.browser.get(menu_url)
-        # TODO does find_element raises Exception if more than one found?
-        # TODO it doesn't - check that it's the only one
+        menu_list = self.browser.find_element_by_id(self.MENU_LIST_ID)
+        menu_items = menu_list.find_elements_by_tag_name('li')
+        self.assertEqual(len(menu_items), 1)
         self.assertEqual(
-            self.browser.find_element_by_tag_name('li').text,
+            menu_items[0].text,
             "No items in menu :("
         )
 
