@@ -3,7 +3,7 @@
   Menu
 {% endblock %}
 {% block content %}
-<ul>
+<ul id="menu-items-list">
 {% for item in object_list %}
   <li><a href="{% url 'menu:detail' item.id %}">{{ item.name }} - {{ item.price }}</a></li>
 {% empty %}
