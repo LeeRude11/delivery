@@ -99,25 +99,11 @@ class MenuListViewTests(CustomTestCase):
                                  ['<MenuItem: ' + new_menu_item.name + '>'])
 
 
-class MenuItemViewTests(CustomTestCase):
-
-    def test_view_context_current_amount(self):
-        """
-        MenuItemView context has current amount of the item in cart.
-        """
-        item_id = self.add_menu_item()
-
-        amount = self.change_item_amount_in_cart()
-        url = reverse('menu:detail', args=(item_id,))
-        response = self.client.get(url)
-        self.assertEqual(response.context['current_amount'], amount)
-
-
 class MenuItemUpdateCartTests(CustomTestCase):
 
     URL = reverse('menu:update_cart')
 
-    def test_update_cart_post_only(self):
+    def test_update_cart_get_only(self):
         """
         Only accept GET requests.
         """

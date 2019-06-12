@@ -25,7 +25,6 @@ class MenuListTests(DeliveryFirefoxTests):
             "No items in menu :("
         )
 
-    # driver.find_element_by_link_text('Continue')
     def test_item_appear_in_menu(self):
         """
         Created MenuItem-s appear on menu page.
@@ -39,8 +38,12 @@ class MenuListTests(DeliveryFirefoxTests):
         for item in MenuItem.objects.all():
             text = self.browser.find_element_by_xpath(
                 f"//a[@href='{reverse('menu:detail', args=(item.id,))}']").text
-            self.assertEqual(
-                f'{item.name} - {item.price}',
+            self.assertIn(
+                item.name.lower(),
+                text.lower()
+            )
+            self.assertIn(
+                str(item.price),
                 text
             )
 
@@ -58,8 +61,9 @@ class MenuDetailTests(DeliveryFirefoxTests):
             'menu:detail', args=(test_item.id,))
         self.browser.get(url)
 
-        name_header = self.browser.find_element_by_class_name('item-name')
-        price_header = self.browser.find_element_by_class_name('item-price')
+        name_header = self.browser.find_element_by_class_name('menu-item-name')
+        price_header = self.browser.find_element_by_class_name(
+            'menu-item-price')
 
         self.assertEqual(name_header.text, test_item.name)
         self.assertIn(str(test_item.price), price_header.text)
