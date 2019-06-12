@@ -23,18 +23,6 @@ class MenuItemView(generic.DetailView):
     template_name = 'menu/detail.html'
     model = MenuItem
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        key = str(self.kwargs['pk'])
-        try:
-            cur_amount = self.request.session['cart'][key]
-        except KeyError:
-            context['current_amount'] = 0
-        else:
-            context['current_amount'] = cur_amount
-        return context
-
 
 def specials(request):
     # TODO
@@ -50,7 +38,8 @@ def update_cart(request):
         return HttpResponseRedirect(
             reverse('menu:menu'))
 
-    item_id = request.GET.get('item_id', '')
+    # TODO '' goes through and raises exception, so 'or None' is needed
+    item_id = request.GET.get('item_id') or None
     menuitem = get_object_or_404(MenuItem, pk=item_id)
 
     cart = request.session.setdefault('cart', {})
