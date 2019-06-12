@@ -1,20 +1,30 @@
 {% extends "base.html" %}
 {% block title %}
-  {{ object.name }}
+{{ menuitem.name }}
 {% endblock %}
 {% block head %}
-  {% load static %}
-  <script type="text/javascript" src="{% static 'menu/menu_script.js' %}" defer></script>
-  <script type="text/javascript">
-    const update_cart_url = "{% url 'menu:update_cart' %}"
-  </script>
+{% load static %}
+<script type="text/javascript" src="{% static 'menu/menu_script.js' %}" defer></script>
+<script type="text/javascript">
+  const update_cart_url = "{% url 'menu:update_cart' %}"
+</script>
 {% endblock %}
 {% block content %}
-<div class="item-name">{{ object.name }}</div>
-<div class="item-price"> Costs {{ object.price }}</div>
-<div class="item-amount">
-    <div class="change-amount" data-action="decrease">-</div>
-    <div class="current-amount" data-item_id="{{ object.id }}">{{current_amount}}</div>
-    <div class="change-amount" data-action="increase">+</div>
+{% load cart_lookup %}
+<div class="menu-item-block">
+  <div class="menu-item-image">
+    <img src="{{ menuitem.image.url }}" alt="{{ menuitem.name }}">
+  </div>
+  <div class="menu-item-info">
+    <span class="menu-item-name">{{ menuitem.name }}</span>
+    <span class="menu-item-price">{{ menuitem.price }}</span>
+  </div>
+  <div class="item-amount">
+    <div class="change-amount" data-action="decrease"></div>
+    <div class="current-amount" data-item_id="{{ menuitem.id }}">
+      <span>{{ request.session|get_cart_item:menuitem.id }}</span>
+    </div>
+    <div class="change-amount" data-action="increase"></div>
+  </div>
 </div>
 {% endblock %}

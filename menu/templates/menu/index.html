@@ -1,13 +1,42 @@
 {% extends "base.html" %}
 {% block title %}
-  Menu
+Menu
+{% endblock %}
+{% block head %}
+{% load static %}
+<script type="text/javascript" src="{% static 'menu/menu_script.js' %}" defer></script>
+<script type="text/javascript">
+  const update_cart_url = "{% url 'menu:update_cart' %}"
+</script>
 {% endblock %}
 {% block content %}
 <ul id="menu-items-list">
-{% for item in object_list %}
-  <li><a href="{% url 'menu:detail' item.id %}">{{ item.name }} - {{ item.price }}</a></li>
-{% empty %}
+  {% load cart_lookup %}
+  {% for menuitem in menuitem_list %}
+  <li>
+    <div class="menu-item">
+      <div class="menu-item-card">
+        <a href="{% url 'menu:detail' menuitem.id %}">
+          <div class="menu-item-image">
+            <img src="{{ menuitem.image.url }}" alt="{{ menuitem.name }}">
+          </div>
+          <div class="menu-item-info">
+            <span class="menu-item-name">{{ menuitem.name }}</span>
+            <span class="menu-item-price">{{ menuitem.price }}</span>
+          </div>
+        </a>
+      </div>
+      <div class="item-amount">
+          <div class="change-amount" data-action="decrease"></div>
+          <div class="current-amount" data-item_id="{{ menuitem.id }}">
+            <span>{{ request.session|get_cart_item:menuitem.id }}</span>
+          </div>
+          <div class="change-amount" data-action="increase"></div>
+      </div>
+    </div>
+  </li>
+  {% empty %}
   <li>No items in menu :(</li>
-{% endfor %}
+  {% endfor %}
 </ul>
 {% endblock %}
