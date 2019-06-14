@@ -1,0 +1,55 @@
+#menu-items-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 10px;
+  list-style: none;
+}
+
+#menu-items-list li {
+  margin: 20px 15px;
+  border: 2px solid rgba(228, 87, 46, 1);
+  background-color: rgba(228, 87, 46, 1);
+}
+
+#menu-items-list li:hover {
+  border-color: rgba(142, 85, 114, 1);
+  background-color: rgba(142, 85, 114, 1);
+}
+
+#menu-items-list a:link {
+  text-decoration: none;
+  text-transform: uppercase;
+  color: rgba(242, 247, 242, 1);
+}
+
+#menu-items-list a:visited {
+  color: rgba(242, 247, 242, 1);
+}
+
+.menu-item-image img {
+  width: 400px;
+  height: auto;
+  vertical-align: bottom;
+}
+
+.menu-item-info {
+  line-height: 2em;
+}
+
+.menu-item-price {
+  float: right;
+}
+
+.item-amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  background-color: rgba(242, 247, 242, 1);
+  font-size: 1.8em;
+  line-height: 2em;
+}
+
+.change-amount img {
+  vertical-align: middle;
+}
