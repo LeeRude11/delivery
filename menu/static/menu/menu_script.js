@@ -11,11 +11,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
 function updateCart(e) {
 
-  let amount_container = e.target.parentNode
+  let amount_container = e.currentTarget.closest('.item-amount')
   let current_amount = amount_container.getElementsByClassName('current-amount')[0]
 
   let last_amount_num = Number(current_amount.textContent)
-  let action = e.target.dataset.action
+  let action = e.currentTarget.dataset.action
 
   let new_amount
   if (action === 'remove') {
