@@ -33,6 +33,22 @@ def specials(request):
     return render(request, template_name)
 
 
+def cart_debug(request):
+    """
+    """
+    if not request.user.is_admin:
+        return HttpResponseRedirect(
+            reverse('menu:menu'))
+    print(request.session['cart'])
+    print(request.session['cart_cost'])
+
+    del request.session['cart']
+    request.session['cart_cost'] = 0
+
+    return HttpResponseRedirect(
+        reverse('menu:menu'))
+
+
 def update_cart(request):
     if request.method != 'GET':
         return HttpResponseRedirect(
