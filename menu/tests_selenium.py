@@ -4,6 +4,7 @@ from random import randint
 from time import sleep
 
 from .models import MenuItem
+from .tests import MenuTestConstants
 from core.tests_selenium import DeliveryFirefoxTests
 
 
@@ -64,8 +65,7 @@ class MenuDetailTests(DeliveryFirefoxTests):
         name_header = self.browser.find_element_by_class_name('menu-item-name')
         price_header = self.browser.find_element_by_class_name(
             'menu-item-price')
-
-        self.assertEqual(name_header.text, test_item.name)
+        self.assertEqual(name_header.text.lower(), test_item.name.lower())
         self.assertIn(str(test_item.price), price_header.text)
 
 
@@ -81,19 +81,21 @@ class MenuDetailTestsLoggedIn():
         self.login_browser_user()
 
 
-class MenuUpdateCartJS(DeliveryFirefoxTests):
+class DetailUpdateCartJS(DeliveryFirefoxTests):
     """
     Test JavaScript implementation of updating the user cart.
     """
 
+    def return_url(self):
+        return self.live_server_url + reverse(
+            'menu:detail', args=(MenuItem.objects.get().id,))
+
     def setUp(self):
         super().setUp()
-
-        new_menu_item = MenuItem.objects.create(
+        MenuItem.objects.create(
             name=f'Dish{randint(1, 10)}', price=randint(10, 300))
 
-        self.url = self.live_server_url + reverse(
-            'menu:detail', args=(new_menu_item.id,))
+        self.url = self.return_url()
         self.browser.get(self.url)
 
         self.current_amount = self.browser.find_element_by_class_name(
@@ -142,3 +144,61 @@ class MenuUpdateCartJS(DeliveryFirefoxTests):
             self.assertEqual(
                 int(cart_cost.text), i * MenuItem.objects.get().price)
         self.assert_no_errors()
+
+
+class ListRerunUpdateCartJS(DetailUpdateCartJS):
+    """
+    Rerun in List view.
+    """
+
+    def return_url(self):
+        """
+        Overwrite to reverse menu list url.
+        """
+        return self.live_server_url + reverse('menu:menu')
+
+
+class ListUpdateCartJS(MenuTestConstants, DeliveryFirefoxTests):
+    """
+    List tests with a list of items.
+    """
+
+    def setUp(self):
+        super().setUp()
+        for i in range(3):
+            MenuItem.objects.create(
+                name=f'Dish{i}', price=randint(10, 300))
+        self.menu_items = MenuItem.objects.all()
+
+        url = self.live_server_url + reverse('menu:menu')
+        self.browser.get(url)
+
+    def test_distinct_items(self):
+        """
+        List items are attached to corresponding items.
+        """
+        cart_cost_div = self.browser.find_element_by_id('cart-cost')
+
+        expected_cart_cost = 0
+        for i, item in enumerate(self.menu_items):
+            current_item = self.browser.find_elements_by_class_name(
+                'menu-item')[i]
+            current_amount = current_item.find_element_by_class_name(
+                'current-amount')
+            self.assertEqual(current_amount.text, '0')
+            self.assertEqual(
+                current_amount.get_attribute('data-item_id'),
+                str(item.id))
+
+            rand_clicks = randint(1, 5)
+            for i in range(rand_clicks):
+                current_item.find_element_by_xpath(
+                    ".//div[@data-action='increase']").click()
+
+            self.assertEqual(current_amount.text, str(rand_clicks))
+
+            expected_cart_cost += item.price * rand_clicks
+
+            self.assertEqual(
+                expected_cart_cost,
+                int(cart_cost_div.text))
