@@ -17,9 +17,10 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('', include('core.urls')),
     path('menu/', include('menu.urls')),
     path('accounts/', include('accounts.urls')),
     path('orders/', include('orders.urls')),
-    path('admin/', admin.site.urls)
+    path('admin/', admin.site.urls),
+    # info url can override other apps unless below
+    path('', include('core.urls')),
 ]
