@@ -36,21 +36,13 @@
               <span>Menu</span>
             </a>
           </li>
-          <li>
-            <a href="{% url 'core:delivery' %}">
-              <span>Delivery Info</span>
-            </a>
-          </li>
-          <li>
-            <a href="{% url 'core:info' %}">
-              <span>Company Info</span>
-            </a>
-          </li>
-          <li>
-            <a href="{% url 'core:contacts' %}">
-              <span>Contacts</span>
-            </a>
-          </li>
+          {% for view in info_views %}
+            <li>
+              <a href="{% url 'core:info' view.view_name %}">
+                <span>{{ view.title }}</span>
+              </a>
+            </li>
+          {% endfor %}
         </ul>
       </div>
       <div id="user-sections">
@@ -72,8 +64,10 @@
     {% if messages %}
     <ul class="messages">
       {% for message in messages %}
-      <li{% if message.tags %} class="{{ message.tags }}" {% endif %}>{{ message }}</li>
-        {% endfor %}
+      <li{% if message.tags %} class="{{ message.tags }}" {% endif %}>
+        <span>{{ message }}</span>
+      </li>
+      {% endfor %}
     </ul>
     {% endif %}
   </header>
