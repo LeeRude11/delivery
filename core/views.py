@@ -1,33 +1,21 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
+from django.views import generic
+
+from .models import InfoViewTemplate
 
 
 def index(request):
     """
     Index page.
     """
-    template_name = 'index.html'
+    template_name = 'core/index.html'
     return render(request, template_name)
 
 
-def delivery(request):
-    """
-    Info about delivery services.
-    """
-    template_name = 'delivery.html'
-    return render(request, template_name)
+class InfoView(generic.DetailView):
+    template_name = 'core/info.html'
+    model = InfoViewTemplate
 
-
-def info(request):
-    """
-    Information about the company.
-    """
-    template_name = 'info.html'
-    return render(request, template_name)
-
-
-def contacts(request):
-    """
-    Company contacts page.
-    """
-    template_name = 'contacts.html'
-    return render(request, template_name)
+    def get_object(self):
+        view_name = self.kwargs['view_name']
+        return get_object_or_404(InfoViewTemplate, view_name=view_name)
