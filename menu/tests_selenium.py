@@ -40,8 +40,8 @@ class MenuListTests(DeliveryFirefoxTests):
             text = self.browser.find_element_by_xpath(
                 f"//a[@href='{reverse('menu:detail', args=(item.id,))}']").text
             self.assertIn(
-                item.name.lower(),
-                text.lower()
+                item.name.casefold(),
+                text.casefold()
             )
             self.assertIn(
                 str(item.price),
@@ -65,7 +65,8 @@ class MenuDetailTests(DeliveryFirefoxTests):
         name_header = self.browser.find_element_by_class_name('menu-item-name')
         price_header = self.browser.find_element_by_class_name(
             'menu-item-price')
-        self.assertEqual(name_header.text.lower(), test_item.name.lower())
+        self.assertEqual(
+            name_header.text.casefold(), test_item.name.casefold())
         self.assertIn(str(test_item.price), price_header.text)
 
 
