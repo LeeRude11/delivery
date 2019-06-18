@@ -1,6 +1,8 @@
 from django.test import TestCase
 from django.urls import reverse
 
+from .models import InfoViewTemplate
+
 
 class DeliveryViewsTests(TestCase):
 
@@ -19,20 +21,22 @@ class DeliveryViewsTests(TestCase):
         """
         self.assert_page_is_functional('core:index')
 
-    def test_delivery_accessible(self):
-        """
-        Delivery info page exists and can be accessed.
-        """
-        self.assert_page_is_functional('core:delivery')
 
-    def test_info_accessible(self):
-        """
-        Company info page exists and can be accessed.
-        """
-        self.assert_page_is_functional('core:info')
+class InfoViewTests(TestCase):
+    """
+    Test for info urls.
+    """
 
-    def test_contact_accessible(self):
+    def test_add_new_info_views(self):
         """
-        Company contacts page exists and can be accessed.
+        Adding new models creates new info views.
         """
-        self.assert_page_is_functional('core:contacts')
+        NEW_VIEW = 'new_page'
+        url = reverse('core:info', args=(NEW_VIEW,))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+        InfoViewTemplate.objects.create(view_name=NEW_VIEW)
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)

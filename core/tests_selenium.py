@@ -77,9 +77,6 @@ NAV_LINKS = [
             'core:index',
             'menu:specials',
             'menu:menu',
-            'core:delivery',
-            'core:info',
-            'core:contacts'
         ]
     },
     {
