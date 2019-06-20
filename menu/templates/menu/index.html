@@ -6,6 +6,7 @@ Menu
 {% load static %}
 <link rel="stylesheet" href="{% static 'menu/menu_list_style.css' %}">
 <script type="text/javascript" src="{% static 'menu/menu_script.js' %}" defer></script>
+<script type="text/javascript" src="{% static 'menu/menu_list_script.js' %}" defer></script>
 <script type="text/javascript">
   const update_cart_url = "{% url 'menu:update_cart' %}"
 </script>
@@ -27,15 +28,18 @@ Menu
           </div>
         </a>
       </div>
+      <div class="change-amount item-add-to-cart" data-action="increase">
+        <img src="{% static 'menu/add_to_cart.png' %}" alt="Add to Cart" class="icons">
+      </div>
       <div class="item-amount">
         <div class="change-amount" data-action="remove">
           <img src="{% static 'menu/trash.png' %}" alt="Remove" class="icons">
         </div>
-        <div class="change-amount" data-action="decrease"></div>
+        <div class="change-amount decrease" data-action="decrease"></div>
         <div class="current-amount" data-item_id="{{ menuitem.id }}">
           <span>{{ request.session|get_cart_item:menuitem.id }}</span>
         </div>
-        <div class="change-amount" data-action="increase"></div>
+        <div class="change-amount increase" data-action="increase"></div>
       </div>
     </div>
   </li>
