@@ -1,0 +1,51 @@
+/* hey */
+#table-container {
+  width: 70%;
+  margin: 0 auto;
+}
+#shopping-cart-table {
+  width: 100%;
+  text-align: center;
+  margin: 0 auto;
+}
+#shopping-cart-table tbody td:first-child {
+  text-align: left;
+}
+#shopping-cart-table td {
+  padding: 0.2rem;
+}
+#shopping-cart-table tr:nth-child(2n) {
+  background-color: var(--purple);
+  color: var(--white)
+}
+
+#shopping-cart-table .change-amount {
+  width: 5%;
+}
+
+tfoot {
+  background-color: var(--olive);
+}
+
+tfoot a {
+  display: block;
+  line-height: 3rem;
+}
+
+tfoot td:nth-child(2) {
+  background-color: var(--white);
+}
+
+tfoot a:link {
+  text-decoration: none;
+  color: var(--black);
+}
+
+tfoot a:visited {
+  color: var(--black);
+}
+
+#food-cost {
+  background-color: var(--olive);
+  height: 3rem;
+}
