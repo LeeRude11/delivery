@@ -3,9 +3,6 @@
   Your profile
 {% endblock %}
 {% block content %}
-<div>
-  Hey. It's a profile page for {{ username }}.
-</div>
 <form method="post" action="{% url 'accounts:profile' %}">
 {% csrf_token %}
   {{ form.as_p }}

@@ -2,6 +2,8 @@ from django.urls import reverse
 
 from random import randint
 from time import sleep
+from functools import partial
+from selenium.common.exceptions import ElementClickInterceptedException
 
 from .models import MenuItem
 from .tests import MenuTestConstants
@@ -104,9 +106,26 @@ class DetailUpdateCartJS(DeliveryFirefoxTests):
         self.actions = {}
 
         ch_amount = self.browser.find_elements_by_class_name('change-amount')
+        increase_buttons = []
         for button in ch_amount:
             action = button.get_attribute('data-action')
-            self.actions[action] = button
+            if action == 'increase':
+                increase_buttons.append(button)
+            else:
+                self.actions[action] = button.click
+        self.actions['increase'] = partial(
+            self.increase_click,
+            increase_buttons
+        )
+
+    def increase_click(self, buttons):
+        """
+        If amount is zero, a cover element increases it to 1.
+        """
+        try:
+            buttons[0].click()
+        except(ElementClickInterceptedException):
+            buttons[1].click()
 
     def assert_no_errors(self):
         error_div = self.browser.find_elements_by_id('error-div')
@@ -120,11 +139,11 @@ class DetailUpdateCartJS(DeliveryFirefoxTests):
 
         for i in range(10):
             self.assertEqual(int(self.current_amount.text), i)
-            self.actions['increase'].click()
+            self.actions['increase']()
 
         for i in range(10, 0, -1):
             self.assertEqual(int(self.current_amount.text), i)
-            self.actions['decrease'].click()
+            self.actions['decrease']()
         self.assertEqual(int(self.current_amount.text), 0)
         self.assert_no_errors()
 
@@ -140,7 +159,7 @@ class DetailUpdateCartJS(DeliveryFirefoxTests):
         )
 
         for i in range(1, 11):
-            self.actions['increase'].click()
+            self.actions['increase']()
             sleep(0.1)
             self.assertEqual(
                 int(cart_cost.text), i * MenuItem.objects.get().price)
@@ -193,8 +212,12 @@ class ListUpdateCartJS(MenuTestConstants, DeliveryFirefoxTests):
 
             rand_clicks = randint(1, 5)
             for i in range(rand_clicks):
-                current_item.find_element_by_xpath(
-                    ".//div[@data-action='increase']").click()
+                increase_buttons = current_item.find_elements_by_xpath(
+                    ".//div[@data-action='increase']")
+                try:
+                    increase_buttons[0].click()
+                except(ElementClickInterceptedException):
+                    increase_buttons[1].click()
 
             self.assertEqual(current_amount.text, str(rand_clicks))
 

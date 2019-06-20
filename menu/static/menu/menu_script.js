@@ -11,8 +11,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
 function updateCart(e) {
 
-  let amount_container = e.currentTarget.closest('.item-amount')
-  let current_amount = amount_container.getElementsByClassName('current-amount')[0]
+  let menu_item = e.currentTarget.closest('.menu-item')
+  let current_amount = menu_item.getElementsByClassName('current-amount')[0]
 
   let last_amount_num = Number(current_amount.textContent)
   let action = e.currentTarget.dataset.action
@@ -42,14 +42,14 @@ function updateCart(e) {
   }).then(function(responseJson) {
     let elements = {
       'cart_cost': document.getElementById('cart-cost'),
-      'amount_container': amount_container,
+      'menu_item': menu_item,
       'current_amount': current_amount,
     }
     parseResult(responseJson, elements)
   }).catch(function(error) {
     // set amount to previous and show an error
     current_amount.textContent = last_amount_num
-    showError(error, amount_container);
+    showError(error, menu_item);
   });
 };
 
