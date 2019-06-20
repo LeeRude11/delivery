@@ -9,38 +9,51 @@
   <script type="text/javascript">
     const update_cart_url = "{% url 'menu:update_cart' %}"
   </script>
+  <link rel="stylesheet" href="{% static 'orders/shopping_cart_style.css' %}">
 {% endblock %}
 {% block content %}
-Hey, I am a shopping cart page.
-<div>
+<div id="table-container">
   {% if contents %}
-   <ul>
+   <table id="shopping-cart-table">
+     <tbody>
       {% for item in contents %}
-      <li>
-        <div class="item-name">{{ item.name }}</div>
-        <div class="item-amount">
-          <div class="change-amount" data-action="decrease">-</div>
-          <div>
-            <span class="current-amount" data-item_id="{{ item.id }}">{{ item.amount }}</span>
-            {# TODO - CSS selector for symbol #} x
-            <span class="item-price">{{ item.price }}</span>
-            =
-            <span class="item-cost">{{ item.cost }}</span>
-          </div>
-          <div class="change-amount" data-action="increase">+</div>
-          <button class="change-amount" data-action="remove">Remove</button>
-        </div>
-      </li>
+      <tr class="menu-item">
+          <td class="item-name">
+            {{ item.name }}
+          </td>
+          <td class="item-price">
+            {{ item.price }}
+          </td>
+          <td class="change-amount decrease" data-action="decrease"></td>
+          <td class="current-amount" data-item_id="{{ item.id }}">
+            {{ item.amount }}
+          </td>
+          <td class="change-amount increase" data-action="increase"></td>
+          <td class="item-cost">
+            {{ item.cost }}
+          </td>
+          <td class="change-amount" data-action="remove">
+            <img src="{% static 'menu/trash.png' %}" alt="Remove" class="icons">
+          </td>
+        </tr>
       {% endfor %}
-  </ul>
-  <div id="bottom-cost">
-    Food cost: <span id="food-cost">{{ request.session.cart_cost }}</span>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2">
+          <a href="{% url 'orders:checkout' %}">
+            Checkout
+          </a>
+        </td>
+        <td colspan="3">Total:</td>
+        <td id="food-cost">{{ request.session.cart_cost }}</td>
+      </tr>
+    </tfoot>
+  </table>
+  <div
   </div>
   {% else %}
     <p>Your shopping cart is empty.</p>
   {% endif %}
 </div>
-<a href="{% url 'orders:checkout' %}">
-  <button>Checkout</button>
-</a>
 {% endblock %}
