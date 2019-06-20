@@ -12,6 +12,8 @@
   </title>
   {% load static %}
   <link rel="stylesheet" href="{% static 'core/style.css' %}">
+  {# TODO for development only #}
+  <!-- <script type="text/javascript" src="{% static 'core/live.js' %}" defer></script> -->
   {% block head %}
   {% endblock %}
 </head>
@@ -19,47 +21,43 @@
 <body>
   <header>
     <nav id="main-bar">
-      <div id="main-sections">
-        <ul>
-          <li>
-            <a href="{% url 'core:index' %}">
-              <span>Home page(TODO logo)</span>
-            </a>
-          </li>
-          <li>
-            <a href="{% url 'menu:specials' %}">
-              <span>Specials</span>
-            </a>
-          </li>
-          <li>
-            <a href="{% url 'menu:menu' %}">
-              <span>Menu</span>
-            </a>
-          </li>
-          {% for view in info_views %}
-            <li>
-              <a href="{% url 'core:info' view.view_name %}">
-                <span>{{ view.title }}</span>
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-      <div id="user-sections">
-        <ul>
-          <li id="cart">
+      <ul>
+        <li>
+          <a href="{% url 'core:index' %}">
+            <img src="{% static 'core/koala.png' %}" alt="Home" class="icons">
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'menu:specials' %}">
+            <span>Specials</span>
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'menu:menu' %}">
+            <span>Menu</span>
+          </a>
+        </li>
+        {% for view in info_views %}
+        <li>
+          <a href="{% url 'core:info' view.view_name %}">
+            <span>{{ view.title }}</span>
+          </a>
+        </li>
+        {% endfor %}
+        <li id="user-section">
+          <div id="cart">
             <a href="{% url 'orders:shopping_cart' %}">
               <img src="{% static 'core/cart.png' %}" alt="Shopping cart" class="icons">
               <span id="cart-cost">{{ request.session.cart_cost|default:"0" }}</span>
             </a>
-          </li>
-          <li id="profile">
+          </div>
+          <div id="profile">
             <a href="{% url 'accounts:profile' %}">
               <img src="{% static 'core/profile.png' %}" alt="Profile" class="icons">
             </a>
-          </li>
-        </ul>
-      </div>
+          </div>
+        </li>
+      </ul>
     </nav>
     {% if messages %}
     <ul class="messages">
