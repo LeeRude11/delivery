@@ -24,6 +24,10 @@ body {
   background-color: var(--white);
 }
 
+#main-bar .active {
+  background-color: var(--olive)
+}
+
 #main-bar ul {
   display: flex;
   flex: 1;

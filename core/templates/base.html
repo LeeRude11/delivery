@@ -27,19 +27,13 @@
             <img src="{% static 'core/koala.png' %}" alt="Home" class="icons">
           </a>
         </li>
-        <li>
-          <a href="{% url 'menu:specials' %}">
-            <span>Specials</span>
-          </a>
-        </li>
-        <li>
-          <a href="{% url 'menu:menu' %}">
-            <span>Menu</span>
-          </a>
-        </li>
-        {% for view in info_views %}
-        <li>
-          <a href="{% url 'core:info' view.view_name %}">
+        {% for view in navbar_views %}
+        <li
+        {% if view.url == request.path %}
+        class="active"
+        {% endif %}
+        >
+          <a href="{{ view.url }}">
             <span>{{ view.title }}</span>
           </a>
         </li>
