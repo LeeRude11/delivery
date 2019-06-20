@@ -15,6 +15,13 @@ body {
   font-family: Verdana, Geneva, sans-serif;
 }
 
+header {
+  width: 100%;
+  position: fixed;
+  top: 0px;
+  z-index: 3;
+}
+
 #main-bar {
   display: flex;
 
@@ -25,7 +32,7 @@ body {
 }
 
 #main-bar .active {
-  background-color: var(--olive)
+  background-color: var(--olive);
 }
 
 #main-bar ul {
@@ -105,7 +112,7 @@ body {
 
 /* Common content rules */
 main {
-  margin: 50px;
+  margin: 120px 50px;
 }
 
 .decrease::before {
