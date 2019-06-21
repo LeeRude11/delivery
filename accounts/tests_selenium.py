@@ -237,12 +237,17 @@ class ProfileTests(FirefoxAccountsTests):
         """
         Profile page is rendered with a link to change password page.
         """
-        PASS_CHANGE_TEXT = "Change Password"
-        button = self.browser.find_element_by_link_text(PASS_CHANGE_TEXT)
-        link = button.get_attribute('href')
+        link = self.link_exists(self.browser, self.PASS_CHANGE_URL)
+        link.click()
+
         expected_link = self.live_server_url + self.PASS_CHANGE_URL
-        self.assertEqual(link, expected_link)
-        button.click()
+        self.assertEqual(self.browser.current_url, expected_link)
+
+    def test_profile_page_logout_link(self):
+        link = self.link_exists(self.browser, self.LOGOUT_URL)
+        link.click()
+
+        expected_link = self.live_server_url + self.LOGIN_URL
         self.assertEqual(self.browser.current_url, expected_link)
 
     def test_profile_page_update_success(self):
