@@ -64,29 +64,13 @@ class DeliveryFirefoxTests(LoginBrowserUserMixin, StaticLiveServerTestCase):
 """
 Base HTML template to be used on every page contains these links.
 """
-# TODO index button on a logo
-NAV_ELEMENT = {
-    'tag_name': 'nav',
-    'id': 'main-bar'
-}
+NAV_ID = 'main-bar'
 NAV_LINKS = [
-    {
-        'tag_name': 'div',
-        'id': 'main-sections',
-        'links': [
-            'core:index',
-            'menu:specials',
-            'menu:menu',
-        ]
-    },
-    {
-        'tag_name': 'div',
-        'id': 'user-sections',
-        'links': [
-            'orders:shopping_cart',
-            'accounts:profile'
-        ]
-    }
+    'core:index',
+    'menu:specials',
+    'menu:menu',
+    'orders:shopping_cart',
+    'accounts:profile'
 ]
 
 
@@ -105,15 +89,11 @@ class DeliveryTests(DeliveryFirefoxTests):
         """
         All expected links are in header.
         """
-        nav = self.browser.find_element_by_id(NAV_ELEMENT['id'])
-        self.assertTrue(nav.tag_name, NAV_ELEMENT['tag_name'])
+        nav = self.browser.find_element_by_id(NAV_ID)
 
-        for div in NAV_LINKS:
-            found_div = nav.find_element_by_id(div['id'])
-            self.assertTrue(found_div.tag_name, div['tag_name'])
-            for link in div['links']:
-                url = reverse(link)
-                self.link_exists(found_div, url)
+        for link in NAV_LINKS:
+            url = reverse(link)
+            self.link_exists(nav, url)
 
 
 class DeliverySiteWideTests(DeliveryFirefoxTests):
