@@ -14,6 +14,13 @@ class MenuTestConstants(object):
         'price': 100
     }
 
+    def get_list_of_menu_items(self, number):
+        items_list = []
+        for i in range(number):
+            items_list.append(MenuItem.objects.create(
+                name=f'Dish{i}', price=randint(10, 300)))
+        return items_list
+
     def change_item_amount_in_cart(self, item_id=None, amount=None,
                                    action='increase'):
         """
@@ -97,6 +104,45 @@ class MenuListViewTests(CustomTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertQuerysetEqual(response.context['object_list'],
                                  ['<MenuItem: ' + new_menu_item.name + '>'])
+
+    def test_unavailable_items_not_displayed(self):
+        """
+        MenuItem-s which have 'available' field set to False
+        are not returned for object list.
+        """
+        number = 5
+        some_items = self.get_list_of_menu_items(number)
+        index = randint(0, number - 1)
+        unavailable = some_items.pop(index)
+
+        unavailable.available = False
+        unavailable.save()
+
+        expected_queryset = MenuItem.objects.exclude(available=False)
+
+        response = self.client.get(reverse('menu:menu'))
+
+        self.assertQuerysetEqual(
+            response.context['object_list'], map(repr, expected_queryset),
+            ordered=False
+        )
+        self.assertNotIn(unavailable, response.context['object_list'])
+
+
+class MenuDetailViewTests(CustomTestCase):
+    def test_unavailable_items_raise_404(self):
+        """
+        Can't access detail pages of unavailable items.
+        """
+        unavailable = MenuItem.objects.create(**self.DEF_DISH)
+
+        unavailable.available = False
+        unavailable.save()
+
+        response = self.client.get(reverse(
+            'menu:detail', args=(unavailable.id,)))
+
+        self.assertEqual(response.status_code, 404)
 
 
 class MenuItemUpdateCartTests(CustomTestCase):

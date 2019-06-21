@@ -18,10 +18,17 @@ class MenuListView(generic.ListView):
     template_name = 'menu/index.html'
     model = MenuItem
 
+    def get_queryset(self):
+        return MenuItem.objects.exclude(available=False)
+
 
 class MenuItemView(generic.DetailView):
     template_name = 'menu/detail.html'
     model = MenuItem
+
+    def get_object(self):
+        pk = self.kwargs['pk']
+        return get_object_or_404(MenuItem, pk=pk, available=True)
 
 
 def specials(request):
