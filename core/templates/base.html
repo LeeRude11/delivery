@@ -28,11 +28,7 @@
           </a>
         </li>
         {% for view in navbar_views %}
-        <li
-        {% if view.url == request.path %}
-        class="active"
-        {% endif %}
-        >
+        <li {% if view.url == request.path %} class="active" {% endif %}>
           <a href="{{ view.url }}">
             <span>{{ view.title }}</span>
           </a>

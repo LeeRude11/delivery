@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}
-  Your profile
+Your profile
 {% endblock %}
 {% block content %}
 <form method="post" action="{% url 'accounts:profile' %}">
-{% csrf_token %}
+  {% csrf_token %}
   {{ form.as_p }}
 
   <input type="submit" value="Update">

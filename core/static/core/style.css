@@ -16,10 +16,11 @@ body {
 }
 
 header {
-  width: 100%;
   position: fixed;
-  top: 0px;
   z-index: 3;
+  top: 0px;
+
+  width: 100%;
 }
 
 #main-bar {
@@ -81,11 +82,11 @@ header {
 }
 
 #user-section {
+  display: flex;
 
   margin-right: 5%;
 
   background-color: var(--purple);
-  display: flex;
 }
 
 #user-section div {
@@ -101,8 +102,9 @@ header {
 }
 
 #cart-cost {
-  font-size: 2rem;
   margin-left: 1rem;
+
+  font-size: 2rem;
 }
 
 .icons {
