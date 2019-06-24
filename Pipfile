@@ -13,6 +13,7 @@ selenium = "*"
 pillow = "*"
 django-heroku = "*"
 gunicorn = "*"
+dj-database-url = "*"
 
 [requires]
 python_version = "3.7"
