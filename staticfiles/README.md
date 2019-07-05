@@ -1,0 +1,1 @@
+Empty staticfiles for Heroku
