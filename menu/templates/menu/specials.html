@@ -2,6 +2,10 @@
 {% block title %}
 Specials
 {% endblock %}
+{% block head %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'menu/specials_style.css' %}">
+{% endblock %}
 {% block content %}
 <ul id="menu-specials-list">
   {% for menuspecial in menuspecial_list %}
@@ -9,6 +13,9 @@ Specials
     <div class="menu-special">
       <div class="menu-special-image">
         <img src="{{ menuspecial.image.url }}" alt="{{ menuspecial.name }}">
+      </div>
+      <div class="menu-special-name">
+        {{menuspecial.name}}
       </div>
     </div>
   </li>
