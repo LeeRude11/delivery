@@ -1,7 +1,19 @@
 {% extends "base.html" %}
 {% block title %}
-  Specials
+Specials
 {% endblock %}
 {% block content %}
-<div>TODO: Specials</div>
+<ul id="menu-specials-list">
+  {% for menuspecial in menuspecial_list %}
+  <li>
+    <div class="menu-special">
+      <div class="menu-special-image">
+        <img src="{{ menuspecial.image.url }}" alt="{{ menuspecial.name }}">
+      </div>
+    </div>
+  </li>
+  {% empty %}
+  <li>No specials available right now</li>
+  {% endfor %}
+</ul>
 {% endblock %}
