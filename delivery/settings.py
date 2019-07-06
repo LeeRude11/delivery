@@ -27,6 +27,7 @@ if os.environ.get('DJANGO_DEBUG') == '1':
 else:
     DEBUG = False
 
+SECRET_KEY = os.environ.get('SECRET_KEY')
 ALLOWED_HOSTS = ['.herokuapp.com']
 
 
@@ -169,6 +170,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
