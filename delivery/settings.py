@@ -22,7 +22,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+if os.environ.get('DJANGO_DEBUG') == '1':
+    DEBUG = True
+else:
+    DEBUG = False
 
 ALLOWED_HOSTS = ['.herokuapp.com']
 
