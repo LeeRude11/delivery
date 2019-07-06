@@ -3,9 +3,8 @@ from django.shortcuts import get_object_or_404
 from django.http import (
     HttpResponseRedirect, JsonResponse, HttpResponseBadRequest)
 from django.urls import reverse
-from django.shortcuts import render
 
-from .models import MenuItem
+from .models import MenuItem, MenuSpecial
 
 UPD_ACTIONS = {
     'increase': 1,
@@ -14,12 +13,14 @@ UPD_ACTIONS = {
 }
 
 
-class MenuListView(generic.ListView):
+class ListAvailableItems(generic.ListView):
+    def get_queryset(self):
+        return self.model.objects.exclude(available=False)
+
+
+class MenuListView(ListAvailableItems):
     template_name = 'menu/index.html'
     model = MenuItem
-
-    def get_queryset(self):
-        return MenuItem.objects.exclude(available=False)
 
 
 class MenuItemView(generic.DetailView):
@@ -31,13 +32,9 @@ class MenuItemView(generic.DetailView):
         return get_object_or_404(MenuItem, pk=pk, available=True)
 
 
-def specials(request):
-    # TODO
-    """
-    Information about current specials.
-    """
+class SpecialsListView(ListAvailableItems):
     template_name = 'menu/specials.html'
-    return render(request, template_name)
+    model = MenuSpecial
 
 
 def cart_debug(request):
